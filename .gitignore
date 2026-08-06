@@ -8,6 +8,7 @@ build/
 Thumbs.db
 __pycache__/
 
-# Internal notes, never published. Store page copy, wiki copy, working notes.
+# Internal notes, never published. Store page copy, wiki copy, changelog copy.
 DESCRIPTION.md
 WIKI.md
+CHANGELOG-*.md

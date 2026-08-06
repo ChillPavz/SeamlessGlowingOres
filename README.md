@@ -27,8 +27,15 @@ Pillow is required and lives on the 3.14 install. Output:
 | `build/SeamlessGlowingOres-Glow.zip` | Emissive only |
 | `build/SeamlessGlowingOres-Border.zip` | Emissive plus the 47 tile connected outline |
 
-40 ore families covering 132 blocks: vanilla, Seamless Ores, Create zinc, Mythic Upgrades, Mythic
-Metals.
+41 families covering 133 blocks: vanilla, Seamless Ores, Create zinc, Mythic Upgrades, Mythic
+Metals, plus ancient debris as a whole block glow.
+
+`PACK_FORMAT` is deliberately **15, not 26.2's 88**. Grepping the real client jars shows 1.20.1 knows
+only `pack_format`, 1.21.1 adds `supported_formats`, and 1.21.11 adds `min_format`/`max_format`, so
+every version from 1.21 up decides compatibility from the declared range and ignores the number. It
+only speaks to 1.20.1 and older, where 88 made the launcher mark the pack incompatible. 15 is also
+the floor of our range, and the minimum vanilla permits. 1.17 to 1.19.4 still show the warning and
+cannot be fixed with one file.
 
 ## Layout
 
@@ -36,6 +43,7 @@ Metals.
 |---|---|
 | `assets/overlays/<mod>/<family>_overlay.png` | The ore layer, blobs on transparency |
 | `assets/borders/<mod>/<family>_border.png` | Hand drawn full frame border, 16x16, 60 opaque pixels |
+| `assets/whole_block/` | Full texture copies for blocks that glow entirely, currently ancient debris |
 | `assets/icon/` | Art used to build `pack.png` |
 | `tools/fusion_full_layout.json` | Fusion's 47 tile layout table, recovered from the mod |
 | `tools/generate_pack.py` | The generator |

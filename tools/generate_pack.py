@@ -60,9 +60,25 @@ PACK_NAME = "Seamless Glowing Ores"
 MOD_NAMESPACE = "seamlessores"
 PACK_NAMESPACE = "seamlessglowingores"
 
-# Resource pack_format for 26.2 is 88. The four-field form is the one verified to load without
-# errors on 26.x.
-PACK_FORMAT = 88
+# pack_format is 15, NOT 26.2's own 88, and that is deliberate.
+#
+# Which field a given Minecraft version reads was checked by grepping the real client jars:
+#   1.20.1   knows ONLY pack_format
+#   1.21.1   knows pack_format + supported_formats
+#   1.21.11+ knows pack_format + supported_formats + min_format/max_format
+# So every version from 1.21 up decides compatibility from the RANGE and ignores this number, and
+# the only versions it still speaks to are 1.20.1 and older. At 88 those reported the pack as
+# incompatible (it still worked, but the launcher marked it red); at 15 it matches 1.20 and 1.20.1
+# exactly. 15 is also the floor of our declared range, so the legacy field now agrees with it.
+#
+# 26.x validates that pack_format sits inside [min_format, max_format] and is >= 15
+# (PackFormat$IntermediaryFormat.validatePackFormatForRange), which 15 satisfies. SuperMartijn642's
+# own Fusion Emissive Ores pack ships exactly this combination for its 1.20-1.21.8 file.
+#
+# 1.17 to 1.19.4 still report incompatible, and cannot be fixed: one integer cannot match several
+# eras, and min_format may not go below 15 ("Multi-version packs cannot support minimum version of
+# less than 15"). The pack still loads there.
+PACK_FORMAT = 15
 
 MC_JAR = os.path.expanduser("~/.gradle/caches/neoformruntime/artifacts/minecraft_26.2_client.jar")
 
@@ -89,6 +105,29 @@ FAMILIES = {
     "quartz":      dict(art=VANILLA, targets=["minecraft:nether_quartz_ore"]),
     # Create. Mod id and namespace are `create` for every Create variant (Create Fly included).
     "zinc":     dict(art="create", targets=["create:zinc_ore", "create:deepslate_zinc_ore"]),
+}
+
+# Blocks that glow as a WHOLE BLOCK instead of getting an ore overlay and a border.
+#
+# Ancient debris is the only one, and it is a deliberate exception rather than an oversight: its
+# texture is its own artwork rather than netherrack with blobs painted on top (133 of 256 pixels
+# differ from netherrack, against 33 for nether gold), so a derived overlay would cover half the
+# block and hide the host stone. Owner's call: the whole texture glows, and it never gets a border,
+# in either variant. The OptiFine build did the same thing and the Fusion rewrite simply lost it.
+#
+# It is a cube_column, verified from the vanilla model on both 1.20.1 and 26.2:
+# parent block/cube_column, `end` = ancient_debris_top, `side` = ancient_debris_side. So the
+# appended model needs end/side rather than the `all` every ore family uses.
+#
+# The art in assets/whole_block/ is a verbatim copy of Mojang's texture, which is what "the whole
+# thing glows" requires. Checked pixel-identical across 1.20.1, 1.21.1, 1.21.11 and 26.2, so one
+# copy serves the entire range this single file covers.
+WHOLE_BLOCK_GLOW = {
+    "ancient_debris": dict(
+        targets=["minecraft:ancient_debris"],
+        parent="block/cube_column",
+        textures={"end": "ancient_debris_top", "side": "ancient_debris_side"},
+    ),
 }
 
 # Mythic Upgrades (MIT, 26.2 on all four loaders, namespace `mythicupgrades`). Block ids read from
@@ -417,6 +456,45 @@ def assert_owns_only_its_namespace(out_dir):
                  + f"\n  (only assets/{PACK_NAMESPACE}/ is allowed - see the namespace note above)")
 
 
+def build_whole_block_glow(out_dir, tex_dir):
+    """
+    Ship the whole-block glow entries, identically in both variants.
+
+    These get no border and no connection, so nothing here depends on `bordered`. The appended model
+    is a full opaque copy of the block's own texture marked emissive, which is what makes the entire
+    block glow rather than a set of blobs on it.
+    """
+    for name, spec in WHOLE_BLOCK_GLOW.items():
+        appended = {}
+        for slot, texture in spec["textures"].items():
+            source = os.path.join(root(), "assets", "whole_block", f"{texture}.png")
+            if not os.path.exists(source):
+                sys.exit(f"Missing whole-block art: {source}")
+            shutil.copyfile(source, os.path.join(tex_dir, f"{texture}_glow.png"))
+            meta = {"emissive": True, "render_type": "cutout"}
+            check_fusion_keys(meta)
+            write_json(os.path.join(tex_dir, f"{texture}_glow.png.mcmeta"), {"fusion": meta})
+            appended[slot] = f"{PACK_NAMESPACE}:block/{texture}_glow"
+
+        write_json(os.path.join(out_dir, "assets", PACK_NAMESPACE, "models", "block", f"{name}_glow.json"), {
+            "loader": "fusion:model",
+            "type": "base",
+            "parent": spec["parent"],
+            "textures": appended,
+        })
+        modifier = {
+            "targets": spec["targets"],
+            "append": [f"{PACK_NAMESPACE}:block/{name}_glow"],
+            "show_breaking_overlay": False,
+            "ignore_missing_targets": True,
+        }
+        check_fusion_modifier_keys(modifier)
+        write_json(os.path.join(out_dir, "assets", PACK_NAMESPACE, "fusion", "model_modifiers", "blocks",
+                                f"{name}.json"), modifier)
+        print(f"  {name:<12} {len(spec['targets']):2d} targets  whole block glow, no border")
+    return len(WHOLE_BLOCK_GLOW)
+
+
 def build(variant, spec):
     from PIL import Image
 
@@ -512,6 +590,8 @@ def build(variant, spec):
         print(f"  {family:<12} {len(targets):2d} targets" + ("  + 47-tile sheet" if bordered else ""))
         built += 1
 
+    built += build_whole_block_glow(out_dir, tex_dir)
+
     assert_owns_only_its_namespace(out_dir)
 
     zip_path = os.path.join(root(), "build", f"SeamlessGlowingOres-{variant.capitalize()}.zip")
@@ -536,7 +616,11 @@ def main():
             total += len(targets)
             print(f"  {family:<12} ({FAMILIES[family]['art']:<15}) {len(targets):2d}  "
                   f"{', '.join(targets)}")
-        print(f"\n  {len(FAMILIES)} families, {total} blocks covered")
+        for name, spec in WHOLE_BLOCK_GLOW.items():
+            total += len(spec["targets"])
+            print(f"  {name:<12} ({'whole block':<15}) {len(spec['targets']):2d}  "
+                  f"{', '.join(spec['targets'])}")
+        print(f"\n  {len(FAMILIES) + len(WHOLE_BLOCK_GLOW)} families, {total} blocks covered")
         print(f"  Mythic Metals families ({len(MYTHIC_METALS)}): active only where that mod exists,"
               f" which is 1.21.4 and below")
         return
