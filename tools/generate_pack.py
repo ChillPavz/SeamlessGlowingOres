@@ -177,42 +177,32 @@ for _metal, _blocks in MYTHIC_METALS.items():
     FAMILIES[_metal] = dict(art="mythic metals",
                             targets=[f"mythicmetals:{b}" for b in _blocks])
 
-# SPLIT FAMILIES: one ore whose hosts do not share one piece of artwork.
+# SPLIT FAMILIES: one metal whose hosts do not share one piece of artwork.
 #
 # Mythic Metals draws nether banglum differently from overworld banglum, and draws its calcite and
 # end stone starrite differently from plain starrite. Different art means a different sprite, and a
 # sprite is what a connecting texture is keyed on, so these cannot stay in one family.
 #
-# `group` keeps them joined anyway. Connection is declared per FACE from a block list, not implied by
-# a shared sprite, so two families in the same group each list every block in the group and each
-# omits its own border on a shared edge. The outline still reads as one body across the boundary even
-# though the two halves are drawn from different art.
+# THEY ARE ALSO DELIBERATELY NOT CONNECTED TO EACH OTHER, and that is the owner's call rather than a
+# limitation. Two blocks that look different should not merge into one outline, and in every case
+# here they could not meet anyway: banglum and nether banglum are in different dimensions, as are
+# calcite and end stone starrite, and plain starrite differs in overlay from the calcite one it
+# shares the overworld with. So each is its own family with its own connection list, i.e. five
+# separate ores as far as the outline is concerned.
 #
-# `overlay_file` / `border_file` point at an art file whose name is not <family>_<kind>.png. Both of
-# these reuse their sibling's hand drawn border, which suits them: the two banglum overlays are
-# within 8 of each other per channel and the two starrite overlays within 2.
-FAMILIES["banglum"]["group"] = "banglum"
-FAMILIES["nether_banglum"] = dict(art="mythic metals", group="banglum",
+# `overlay_file` / `border_file` point at an art file whose name is not <family>_<kind>.png. The two
+# starrite host variants share one overlay and all of these reuse their sibling's hand drawn border,
+# which suits them: the two banglum overlays are within 8 of each other per channel.
+FAMILIES["nether_banglum"] = dict(art="mythic metals",
                                   targets=["mythicmetals:nether_banglum_ore"],
                                   border_file="banglum_border")
-FAMILIES["starrite"]["group"] = "starrite"
-FAMILIES["starrite_hosted"] = dict(art="mythic metals", group="starrite",
-                                   targets=["mythicmetals:calcite_starrite_ore",
-                                            "mythicmetals:end_stone_starrite_ore"],
-                                   overlay_file="starrite_overlay2", border_file="starrite_border")
+FAMILIES["calcite_starrite"] = dict(art="mythic metals",
+                                    targets=["mythicmetals:calcite_starrite_ore"],
+                                    overlay_file="starrite_overlay2", border_file="starrite_border")
+FAMILIES["end_stone_starrite"] = dict(art="mythic metals",
+                                      targets=["mythicmetals:end_stone_starrite_ore"],
+                                      overlay_file="starrite_overlay2", border_file="starrite_border")
 
-# STORMYX IS DELIBERATELY NOT ANIMATED, AND THIS IS SETTLED - do not try it again.
-#
-# Mythic Metals animates that ore through five frames at frametime 20 (its own stormyx_ore.png is
-# 16x80). Matching that was attempted twice and abandoned: an animated `full` connecting sheet makes
-# Fusion build either 960 junk frames per tile or an empty frame list, the latter crashing the game
-# on load with `ArithmeticException: / by zero` in SpriteContents$Ticker, and animating only the
-# plain overlay did not take either. The arithmetic behind that is written up in the maintainer notes so it
-# never has to be rediscovered.
-#
-# So stormyx is an ordinary family: one overlay, one border, one still frame each, exactly like the
-# other 41. The block underneath still animates; our layer simply holds one colour over it.
-#
 # Edge names exactly as Fusion names them in TextureConnections. Because Fusion NAMES its
 # directions, there is no orientation ambiguity to resolve empirically - which is what caused the
 # reflected borders on the Continuity build. Do not reorder.
@@ -308,21 +298,6 @@ def mod_block_targets(family):
 
 def family_targets(family):
     return list(FAMILIES[family]["targets"]) + mod_block_targets(family)
-
-
-def connection_blocks(family):
-    """
-    Every block this family's outline should join to: its own targets, plus those of any family
-    sharing its `group`. Identical for every member, so the join is symmetric by construction.
-    """
-    group = FAMILIES[family].get("group")
-    if group is None:
-        return family_targets(family)
-    blocks = []
-    for other in FAMILIES:
-        if FAMILIES[other].get("group") == group:
-            blocks += family_targets(other)
-    return blocks
 
 
 def mitre_owners(size):
@@ -613,8 +588,7 @@ def build(variant, spec):
                 # was ignored WITHOUT ANY WARNING and connection fell back to the default
                 # is_same_block - i.e. each host stone's variant bordered only against itself.
                 "connections": [
-                    {"type": "match_block", "blocks": connection_blocks(family),
-                     "ignore_missing": True},
+                    {"type": "match_block", "blocks": targets, "ignore_missing": True},
                 ],
             })
         check_fusion_keys(meta)

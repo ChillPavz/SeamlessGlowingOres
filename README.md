@@ -27,14 +27,15 @@ Pillow is required and lives on the 3.14 install. Output:
 | `build/SeamlessGlowingOres-Glow.zip` | Emissive only |
 | `build/SeamlessGlowingOres-Border.zip` | Emissive plus the 47 tile connected outline |
 
-44 families covering 135 blocks: vanilla, Seamless Ores, Create zinc, Mythic Upgrades, Mythic
-Metals, plus ancient debris as a whole block glow. That is 42 distinct ores; banglum and starrite
-each split into two families because Mythic Metals draws some of their hosts differently, and a
-sprite is what a connecting texture is keyed on.
+45 families covering 135 blocks: vanilla, Seamless Ores, Create zinc, Mythic Upgrades, Mythic
+Metals, plus ancient debris as a whole block glow.
 
-Split families share a `group`, so both halves declare the same connection block list and still join
-into one outline across the boundary even though they are drawn from different art. `overlay_file`
-and `border_file` let the second half reuse its sibling's border.
+Banglum and starrite each spread across several families, because Mythic Metals draws some of their
+hosts differently and a sprite is what a connecting texture is keyed on. Those five are also
+deliberately not connected to each other: blocks that look different should not merge into one
+outline, and none of these pairs can meet anyway. `overlay_file` and `border_file` point a family at
+art whose name is not `<family>_<kind>.png`, which is how the two starrite host variants share one
+overlay and how all of them reuse a sibling's border.
 
 `PACK_FORMAT` is deliberately **15, not 26.2's 88**. Grepping the real client jars shows 1.20.1 knows
 only `pack_format`, 1.21.1 adds `supported_formats`, and 1.21.11 adds `min_format`/`max_format`, so
