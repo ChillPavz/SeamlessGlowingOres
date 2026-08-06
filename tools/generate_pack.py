@@ -335,6 +335,23 @@ FUSION_PREDICATE_TYPES = {"match_block", "match_state", "is_same_block", "is_sam
                           "match_state_in_front", "and", "or", "not", "always", "never"}
 FUSION_PREDICATE_KEYS = {"type", "block", "blocks", "ignore_missing", "predicates", "directions"}
 
+# Top-level keys of a `fusion/model_modifiers/blocks/<name>.json`, recovered by disassembling
+# BlockModelModifierReloadListener.parseResource and listing every key it queries with has().
+# Same reason as the list above: a misspelled key here is read by nothing and warned about by
+# nothing. `ignore_missing_targets` in particular would silently revert the whole-family failure
+# this list is here to prevent - see the modifier written in build().
+FUSION_MODIFIER_KEYS = {"targets", "append", "append_models", "default_model_overrides",
+                        "priority", "show_breaking_overlay", "pane_culling_fix",
+                        "ignore_missing_targets"}
+
+
+def check_fusion_modifier_keys(modifier):
+    """Fail the build on a model-modifier key Fusion would silently ignore."""
+    unknown = set(modifier) - FUSION_MODIFIER_KEYS
+    if unknown:
+        sys.exit(f"Unknown Fusion model-modifier key(s) {sorted(unknown)} - Fusion ignores these "
+                 f"silently. Known: {sorted(FUSION_MODIFIER_KEYS)}")
+
 
 def check_fusion_keys(meta):
     """Fail the build on a key or predicate type Fusion would silently ignore."""
@@ -473,12 +490,24 @@ def build(variant, spec):
             "parent": "block/cube_all",
             "textures": {"all": f"{PACK_NAMESPACE}:block/{texture}"},
         })
-        write_json(os.path.join(out_dir, "assets", PACK_NAMESPACE, "fusion", "model_modifiers", "blocks",
-                                f"{family}.json"), {
+        modifier = {
             "targets": targets,
             "append": [f"{PACK_NAMESPACE}:block/{texture}"],
             "show_breaking_overlay": False,
-        })
+            # WITHOUT THIS, ONE MISSING BLOCK KILLS THE WHOLE FAMILY - including vanilla's own ore.
+            # Fusion parses the file as a unit: the first target it cannot resolve throws, the file
+            # is discarded, and every other target in it silently loses its glow and border. So a
+            # user with only Fusion installed got nothing at all, because every vanilla family also
+            # lists this mod's host variants. Verified in BlockModelModifierReloadListener: with the
+            # flag set, an unresolvable id is skipped and the rest are kept, and a family where
+            # NOTHING resolves returns early with no error at all. Added in Fusion 1.3.0 (absent in
+            # 1.2.12), and present in every 1.3.12 build down to mc1.16, so it is safe for the whole
+            # version range this one file serves.
+            "ignore_missing_targets": True,
+        }
+        check_fusion_modifier_keys(modifier)
+        write_json(os.path.join(out_dir, "assets", PACK_NAMESPACE, "fusion", "model_modifiers", "blocks",
+                                f"{family}.json"), modifier)
 
         print(f"  {family:<12} {len(targets):2d} targets" + ("  + 47-tile sheet" if bordered else ""))
         built += 1

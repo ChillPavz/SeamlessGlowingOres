@@ -8,8 +8,8 @@ in `tools/` is not.
 
 | | |
 |---|---|
-| Minecraft | 26.2 |
-| Requires | [Fusion](https://modrinth.com/mod/fusion-connected-textures), and nothing else |
+| Minecraft | One file for 1.17 and up. The pack contains no code and declares a wide format range |
+| Requires | [Fusion](https://modrinth.com/mod/fusion-connected-textures) **1.3.0 or newer**, and nothing else |
 | Wiki | https://chillpavz.com/seamless-glowing-ores |
 | Licence | All rights reserved, see `LICENSE` |
 
@@ -27,7 +27,8 @@ Pillow is required and lives on the 3.14 install. Output:
 | `build/SeamlessGlowingOres-Glow.zip` | Emissive only |
 | `build/SeamlessGlowingOres-Border.zip` | Emissive plus the 47 tile connected outline |
 
-20 ore families covering 74 blocks: vanilla, Seamless Ores, Create zinc, Mythic Upgrades.
+40 ore families covering 132 blocks: vanilla, Seamless Ores, Create zinc, Mythic Upgrades, Mythic
+Metals.
 
 ## Layout
 
@@ -42,9 +43,18 @@ Pillow is required and lives on the 3.14 install. Output:
 Our own block ids are read from the mod's `blockstates/` directory at build time rather than
 hardcoded, so the pack cannot drift out of step with the mod.
 
-## Three things that will bite you
+## Four things that will bite you
 
-These each cost a debugging round. The generator now fails the build on all three.
+These each cost a debugging round. The generator now fails the build on all four.
+
+**One missing block used to kill the whole family, vanilla ore included.** Fusion parses a
+`model_modifiers` file as a unit: the first target it cannot resolve throws, the file is discarded,
+and every other target in it silently loses its glow and its border. Because every vanilla family
+also lists this mod's host variants, a user running only Fusion got nothing at all. The fix is
+`"ignore_missing_targets": true`, which skips the unresolvable id and keeps the rest, and makes a
+family whose mod is entirely absent a clean no-op with no error. It went in at Fusion 1.3.0, which
+is why that is the stated minimum. `check_fusion_modifier_keys()` guards the spelling, since
+Fusion would ignore a typo here as silently as it ignores any other unknown key.
 
 **Fusion ignores unknown keys in total silence.** No warning, no log line. Writing `connection`
 instead of `connections` produced a pack that looked entirely valid and quietly fell back to
@@ -71,11 +81,12 @@ Re-derive it the same way if Fusion ever changes the layout. It takes about a mi
 Unlike the OptiFine format this replaced, Fusion names its connection directions in its own field
 names, so there is no orientation ambiguity to resolve by experiment.
 
-## Not built
+## Mythic Metals
 
-`MYTHIC_METALS_PENDING` lists 20 families whose art is finished and in `assets/`, but Mythic Metals
-is Fabric only and stops at 1.21.4, so there are no 26.2 block ids to target or verify. When that
-port lands, add the ids; the art needs no changes.
+Its 20 families are built and shipped, with ids read out of `mythicmetals-0.25.3+1.21.4.jar`. The mod
+is Fabric only and stops at 1.21.4, so those targets resolve on 1.21.4 and below and are skipped
+everywhere else. That costs nothing now that `ignore_missing_targets` is set, and it is the reason
+one file can carry them: on 26.2 they are simply inert rather than an error.
 
 ## Credits
 
