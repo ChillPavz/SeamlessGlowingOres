@@ -8,7 +8,7 @@ in `tools/` is not.
 
 | | |
 |---|---|
-| Minecraft | One file for 1.17 and up. The pack contains no code and declares a wide format range |
+| Minecraft | One file. **Publish it tagged 1.21 and up**; it loads far older but see the note below |
 | Requires | [Fusion](https://modrinth.com/mod/fusion-connected-textures) **1.3.0 or newer**, and nothing else |
 | Wiki | https://chillpavz.com/seamless-glowing-ores |
 | Licence | All rights reserved, see `LICENSE` |
@@ -90,6 +90,22 @@ Re-derive it the same way if Fusion ever changes the layout. It takes about a mi
 Unlike the OptiFine format this replaced, Fusion names its connection directions in its own field
 names, so there is no orientation ambiguity to resolve by experiment.
 
+## Which versions to actually publish for
+
+The file is version agnostic, so this is a tagging decision rather than a build one, and it can be
+widened later without touching the zip.
+
+**Tag 1.21.x, 26.1.x and 26.2.** That is roughly three quarters of the audience by Modrinth download
+share (Fabric API: 1.21.x 52%, 26.1.x 18%, 26.2 4%) and it is the range with no caveats at all.
+
+**1.20.x is about 16 to 20%, and 1.20.1 alone is 15%, but it comes with two.** On Fabric there it
+needs Indium or nothing renders, and the Indium render path flickers. Worth adding later with both
+written on the page; not worth leading with.
+
+**1.19 and below is about 4% combined, and that figure is lifetime downloads, so the live share is
+lower still.** It also cannot be made to stop reporting as incompatible: one `pack_format` integer
+cannot match several eras and `min_format` may not go below 15. Leave it untagged.
+
 ## Animated ores
 
 `ANIMATED` lists families whose art is numbered (`stormyx_overlay1.png`) instead of single files.
@@ -98,17 +114,25 @@ Stormyx is the only one so far: Mythic Metals ships it as a 16x80 texture, five 
 mcmeta so our layer stays in step with the block underneath, and the owner's five overlay frames were
 checked pixel for pixel against the mod's five, in order.
 
-The connecting sheet follows Fusion's own rule, from `ConnectingTextureType.createTexture`: with
-animation metadata present and no explicit frame size, one frame is `layout.width x layout.height`
-tiles, so frames are whole 128x96 sheets stacked vertically. A **square** image is rejected outright
-with "Image must use the 'full' layout's 6 : 8 aspect ratio to support animation", because Fusion
-treats a square one as an 8x8 grid to crop. `per_tile_animation` switches to frames stacked inside
-each cell instead; we use the default.
+The `animation` section is written beside `fusion` at the root of the mcmeta, not inside it, and only
+on the plain overlay.
 
-Five ore frames against a four step border cycle is handled with `math.lcm`, giving a 20 frame sheet
-where frame `k` carries overlay `k%5` and border `k%4`. Both cycles keep their own period at the same
-frametime, and they wrap together at the loop point so interpolation stays continuous. The `animation`
-section is written beside `fusion` at the root of the mcmeta, not inside it.
+**Do not animate the connecting sheet. It crashes Minecraft on load, and the arithmetic is Fusion's.**
+`ConnectingTextureType.createTexture` rebuilds the metadata as `frameWidth = w / layout.getWidth()`
+and `frameHeight = h / layout.getHeight()`, then crops each tile with `ImageHelper.createCropFramed`,
+whose output is `tile * imageWidth / frameWidth` by `tile * imageHeight / frameHeight`. For a 128x1920
+sheet that gives:
+
+* `per_tile_animation` off: a 16x16 frame, so every tile becomes a 128x1920 sprite that vanilla reads
+  as an 8 by 120 grid, i.e. 960 frames of nonsense, 47 times over
+* `per_tile_animation` on: a 16x320 frame, so the per tile crop is 128x96 and `96 / 320` truncates to
+  **zero** rows, leaving an empty frame list. `SpriteContents$Ticker` then does `% frames.size()`,
+  which is the `ArithmeticException: / by zero` seen in the crash report
+
+Neither is what was asked for, so the sheet is built from one still frame (`sheet_overlay`,
+`sheet_border`) and only the plain overlay animates. Doing the border properly would mean splitting
+the ore and the border into two appended models so the ore can animate on the plain texture path;
+that needs testing in game, because a fully surrounded tile would then be entirely transparent.
 
 ## Mythic Metals
 

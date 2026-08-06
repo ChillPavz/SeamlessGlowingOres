@@ -40,7 +40,7 @@ and fusion-connected-blocks) - not from documentation.
 import argparse
 import io
 import json
-import math
+
 import os
 import shutil
 import sys
@@ -190,13 +190,30 @@ for _metal, _blocks in MYTHIC_METALS.items():
 # their colours span teal to magenta while the ore frames barely move, so they cannot be matched to
 # frames by colour and must not be.
 #
-# Two independent cycles at the same pace is exactly what a least common multiple is for: the border
-# sheet is built with LCM(5, 4) = 20 frames, where frame k carries overlay k%5 and border k%4. The
-# ore blobs then repeat every 5 frames, in step with the mod's own texture, and the border repeats
-# every 4, both at 20 ticks a frame. Both wrap together at the loop point, so interpolation stays
-# continuous across it. Set border_cycle to 1 to lock the border to the ore instead.
+# THE CONNECTING SHEET MUST NOT BE ANIMATED. It crashed Minecraft on load, and the reason is in
+# Fusion's own arithmetic rather than in our art.
+#
+# ConnectingTextureType.createTexture rebuilds the animation metadata as
+# frameWidth = w / layout.getWidth(), frameHeight = h / layout.getHeight(), and then crops each tile
+# with ImageHelper.createCropFramed, whose output is (tile*imageWidth/frameWidth) wide by
+# (tile*imageHeight/frameHeight) tall. Transcribing both for a 128x1920 sheet:
+#   per_tile_animation off -> frame 16x16 -> every tile becomes a 128x1920 sprite that vanilla reads
+#                             as an 8x120 grid, i.e. 960 frames of nonsense, 47 times over
+#   per_tile_animation on  -> frame 16x320 -> the per tile crop is 128x96, and 96/320 rounds to ZERO
+#                             rows, so the frame list comes out empty and SpriteContents$Ticker does
+#                             `% frames.size()`, which is the exact "/ by zero" in the crash report
+# Neither path produces the frames we asked for. So the ore is animated where the mechanism is plain
+# vanilla and well trodden - the glow variant's 16x80 strip, which is the same shape as the mod's own
+# stormyx_ore.png - and the connecting sheet is built from one still frame of each.
+#
+# The border cycle the owner drew is kept in the repo for whenever this is revisited. Doing it
+# properly needs the border and the ore split into two appended models, so the ore layer can animate
+# on the plain texture path while the border stays a still connecting texture; that is a bigger
+# change and wants testing in game, since a fully surrounded tile would then be entirely transparent.
 ANIMATED = {
-    "stormyx": dict(overlay_frames=5, border_frames=4, frametime=20, interpolate=True),
+    "stormyx": dict(overlay_frames=5, border_frames=4, frametime=20, interpolate=True,
+                    # Which still frame the connecting sheet uses. 1-based.
+                    sheet_overlay=1, sheet_border=1),
 }
 
 # Edge names exactly as Fusion names them in TextureConnections. Because Fusion NAMES its
@@ -378,26 +395,18 @@ def build_sheet_frame(overlay, master, spec):
 
 def build_sheet(family, spec):
     """
-    The connecting texture for one family: one 8x6 sheet, or several stacked for an animated ore.
+    The connecting texture for one family: always ONE still 8x6 sheet.
 
-    Fusion's own rule, from ConnectingTextureType.createTexture: with animation metadata present and
-    no explicit frame size, the frame is layout.width x layout.height tiles - so the frames are whole
-    128x96 sheets stacked vertically, and a SQUARE image is rejected outright ("Image must use the
-    'full' layout's 6 : 8 aspect ratio to support animation"). That is what this emits.
+    An animated family contributes a single chosen frame of each, never a stacked strip - see the
+    comment on ANIMATED for the arithmetic that makes an animated connecting sheet crash the game.
     """
-    from PIL import Image
     overlays = art_frames(family, "overlays")
     borders = art_frames(family, "borders")
-    if len(overlays) == 1 and len(borders) == 1:
+    animation = ANIMATED.get(family)
+    if animation is None:
         return build_sheet_frame(overlays[0], borders[0], spec)
-
-    count = math.lcm(len(overlays), len(borders))
-    frames = [build_sheet_frame(overlays[k % len(overlays)], borders[k % len(borders)], spec)
-              for k in range(count)]
-    strip = Image.new("RGBA", (frames[0].width, frames[0].height * count), (0, 0, 0, 0))
-    for k, frame in enumerate(frames):
-        strip.paste(frame, (0, k * frames[0].height))
-    return strip
+    return build_sheet_frame(overlays[animation["sheet_overlay"] - 1],
+                             borders[animation["sheet_border"] - 1], spec)
 
 
 def write_json(path, data):
@@ -646,9 +655,10 @@ def build(variant, spec):
             })
         check_fusion_keys(meta)
         # `animation` is a sibling of `fusion` at the root of the mcmeta, not a Fusion key: Fusion
-        # reads it back through vanilla's AnimationMetadataSection.
+        # reads it back through vanilla's AnimationMetadataSection. It is written ONLY for the plain
+        # overlay - the connecting sheet is a still image and must not claim otherwise.
         mcmeta = {"fusion": meta}
-        if animation_metadata(family) is not None:
+        if not bordered and animation_metadata(family) is not None:
             mcmeta = {"animation": animation_metadata(family), "fusion": meta}
         write_json(os.path.join(tex_dir, f"{texture}.png.mcmeta"), mcmeta)
 
