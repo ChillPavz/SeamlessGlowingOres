@@ -27,7 +27,7 @@ Pillow is required and lives on the 3.14 install. Output:
 | `build/SeamlessGlowingOres-Glow.zip` | Emissive only |
 | `build/SeamlessGlowingOres-Border.zip` | Emissive plus the 47 tile connected outline |
 
-41 families covering 133 blocks: vanilla, Seamless Ores, Create zinc, Mythic Upgrades, Mythic
+42 families covering 135 blocks: vanilla, Seamless Ores, Create zinc, Mythic Upgrades, Mythic
 Metals, plus ancient debris as a whole block glow.
 
 `PACK_FORMAT` is deliberately **15, not 26.2's 88**. Grepping the real client jars shows 1.20.1 knows
@@ -43,6 +43,7 @@ cannot be fixed with one file.
 |---|---|
 | `assets/overlays/<mod>/<family>_overlay.png` | The ore layer, blobs on transparency |
 | `assets/borders/<mod>/<family>_border.png` | Hand drawn full frame border, 16x16, 60 opaque pixels |
+| `assets/{overlays,borders}/<mod>/<family>_{overlay,border}<n>.png` | Numbered frames, animated families only |
 | `assets/whole_block/` | Full texture copies for blocks that glow entirely, currently ancient debris |
 | `assets/icon/` | Art used to build `pack.png` |
 | `tools/fusion_full_layout.json` | Fusion's 47 tile layout table, recovered from the mod |
@@ -89,9 +90,29 @@ Re-derive it the same way if Fusion ever changes the layout. It takes about a mi
 Unlike the OptiFine format this replaced, Fusion names its connection directions in its own field
 names, so there is no orientation ambiguity to resolve by experiment.
 
+## Animated ores
+
+`ANIMATED` lists families whose art is numbered (`stormyx_overlay1.png`) instead of single files.
+Stormyx is the only one so far: Mythic Metals ships it as a 16x80 texture, five frames, with
+`{"animation": {"interpolate": true, "frametime": 20}}`. Those numbers are copied from the mod's own
+mcmeta so our layer stays in step with the block underneath, and the owner's five overlay frames were
+checked pixel for pixel against the mod's five, in order.
+
+The connecting sheet follows Fusion's own rule, from `ConnectingTextureType.createTexture`: with
+animation metadata present and no explicit frame size, one frame is `layout.width x layout.height`
+tiles, so frames are whole 128x96 sheets stacked vertically. A **square** image is rejected outright
+with "Image must use the 'full' layout's 6 : 8 aspect ratio to support animation", because Fusion
+treats a square one as an 8x8 grid to crop. `per_tile_animation` switches to frames stacked inside
+each cell instead; we use the default.
+
+Five ore frames against a four step border cycle is handled with `math.lcm`, giving a 20 frame sheet
+where frame `k` carries overlay `k%5` and border `k%4`. Both cycles keep their own period at the same
+frametime, and they wrap together at the loop point so interpolation stays continuous. The `animation`
+section is written beside `fusion` at the root of the mcmeta, not inside it.
+
 ## Mythic Metals
 
-Its 20 families are built and shipped, with ids read out of `mythicmetals-0.25.3+1.21.4.jar`. The mod
+Its 21 families are built and shipped, with ids read out of `mythicmetals-0.25.3+1.21.4.jar`. The mod
 is Fabric only and stops at 1.21.4, so those targets resolve on 1.21.4 and below and are skipped
 everywhere else. That costs nothing now that `ignore_missing_targets` is set, and it is the reason
 one file can carry them: on 26.2 they are simply inert rather than an error.
@@ -99,6 +120,7 @@ one file can carry them: on 26.2 they are simply inert rather than an error.
 ## Credits
 
 The ore overlays are derived from Minecraft's own textures and remain Mojang's property. Zinc is
-derived from Create, which is CC0 and MIT licensed. Mythic Upgrades is MIT licensed.
+derived from Create, which is CC0 and MIT licensed. Mythic Upgrades and Mythic Metals are both MIT
+licensed.
 
 Borders and the ore art arrangement are original work by chillpavz.
