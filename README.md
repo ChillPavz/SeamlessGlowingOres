@@ -43,7 +43,6 @@ cannot be fixed with one file.
 |---|---|
 | `assets/overlays/<mod>/<family>_overlay.png` | The ore layer, blobs on transparency |
 | `assets/borders/<mod>/<family>_border.png` | Hand drawn full frame border, 16x16, 60 opaque pixels |
-| `assets/{overlays,borders}/<mod>/<family>_{overlay,border}<n>.png` | Numbered frames, animated families only |
 | `assets/whole_block/` | Full texture copies for blocks that glow entirely, currently ancient debris |
 | `assets/icon/` | Art used to build `pack.png` |
 | `tools/fusion_full_layout.json` | Fusion's 47 tile layout table, recovered from the mod |
@@ -106,33 +105,22 @@ written on the page; not worth leading with.
 lower still.** It also cannot be made to stop reporting as incompatible: one `pack_format` integer
 cannot match several eras and `min_format` may not go below 15. Leave it untagged.
 
-## Animated ores
+## Stormyx is not animated, and that is settled
 
-`ANIMATED` lists families whose art is numbered (`stormyx_overlay1.png`) instead of single files.
-Stormyx is the only one so far: Mythic Metals ships it as a 16x80 texture, five frames, with
-`{"animation": {"interpolate": true, "frametime": 20}}`. Those numbers are copied from the mod's own
-mcmeta so our layer stays in step with the block underneath, and the owner's five overlay frames were
-checked pixel for pixel against the mod's five, in order.
+Mythic Metals animates that ore through five frames at frametime 20. Matching it was attempted twice
+and abandoned, so stormyx is an ordinary family: one overlay, one border, one still frame each.
 
-The `animation` section is written beside `fusion` at the root of the mcmeta, not inside it, and only
-on the plain overlay.
+An animated `full` connecting sheet is not viable. `ConnectingTextureType.createTexture` rebuilds the
+metadata as `frameWidth = w / layout.getWidth()`, `frameHeight = h / layout.getHeight()`, then crops
+each tile with `ImageHelper.createCropFramed`, whose output is `tile * imageWidth / frameWidth` by
+`tile * imageHeight / frameHeight`. For a 128x1920 sheet that is either a 16x16 frame, giving every
+tile a 128x1920 sprite read as an 8 by 120 grid (960 junk frames, 47 times over), or with
+`per_tile_animation` a 16x320 frame, where the per tile crop is 128x96 and `96 / 320` truncates to
+zero rows. The empty frame list then reaches `SpriteContents$Ticker`, which does `% frames.size()`
+and crashes the game on load.
 
-**Do not animate the connecting sheet. It crashes Minecraft on load, and the arithmetic is Fusion's.**
-`ConnectingTextureType.createTexture` rebuilds the metadata as `frameWidth = w / layout.getWidth()`
-and `frameHeight = h / layout.getHeight()`, then crops each tile with `ImageHelper.createCropFramed`,
-whose output is `tile * imageWidth / frameWidth` by `tile * imageHeight / frameHeight`. For a 128x1920
-sheet that gives:
-
-* `per_tile_animation` off: a 16x16 frame, so every tile becomes a 128x1920 sprite that vanilla reads
-  as an 8 by 120 grid, i.e. 960 frames of nonsense, 47 times over
-* `per_tile_animation` on: a 16x320 frame, so the per tile crop is 128x96 and `96 / 320` truncates to
-  **zero** rows, leaving an empty frame list. `SpriteContents$Ticker` then does `% frames.size()`,
-  which is the `ArithmeticException: / by zero` seen in the crash report
-
-Neither is what was asked for, so the sheet is built from one still frame (`sheet_overlay`,
-`sheet_border`) and only the plain overlay animates. Doing the border properly would mean splitting
-the ore and the border into two appended models so the ore can animate on the plain texture path;
-that needs testing in game, because a fully surrounded tile would then be entirely transparent.
+Animating only the plain overlay in the glow variant did not take either, so there is no half measure
+worth keeping. Do not spend time here again without a specific new reason.
 
 ## Mythic Metals
 

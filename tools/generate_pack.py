@@ -177,45 +177,18 @@ for _metal, _blocks in MYTHIC_METALS.items():
     FAMILIES[_metal] = dict(art="mythic metals",
                             targets=[f"mythicmetals:{b}" for b in _blocks])
 
-# ANIMATED ORES. Their art is numbered - <family>_overlay1.png, <family>_border1.png - and every
-# other family stays on the single unnumbered file.
+# STORMYX IS DELIBERATELY NOT ANIMATED, AND THIS IS SETTLED - do not try it again.
 #
-# Stormyx is the only one. Facts read out of mythicmetals-0.24.6+1.21.jar rather than eyeballed:
-# stormyx_ore.png is 16x80, i.e. FIVE 16x16 frames, and its mcmeta is
-# {"animation": {"interpolate": true, "frametime": 20}}. Both stormyx_ore and blackstone_stormyx_ore
-# use the same numbers. The owner's five overlay frames were checked against those five frames and
-# match to the pixel, in order, so frame N of our art belongs on frame N of theirs.
+# Mythic Metals animates that ore through five frames at frametime 20 (its own stormyx_ore.png is
+# 16x80). Matching that was attempted twice and abandoned: an animated `full` connecting sheet makes
+# Fusion build either 960 junk frames per tile or an empty frame list, the latter crashing the game
+# on load with `ArithmeticException: / by zero` in SpriteContents$Ticker, and animating only the
+# plain overlay did not take either. The arithmetic behind that is written up in the maintainer notes so it
+# never has to be rediscovered.
 #
-# The borders are a FOUR step colour cycle of the owner's own design, not one border per ore frame -
-# their colours span teal to magenta while the ore frames barely move, so they cannot be matched to
-# frames by colour and must not be.
+# So stormyx is an ordinary family: one overlay, one border, one still frame each, exactly like the
+# other 41. The block underneath still animates; our layer simply holds one colour over it.
 #
-# THE CONNECTING SHEET MUST NOT BE ANIMATED. It crashed Minecraft on load, and the reason is in
-# Fusion's own arithmetic rather than in our art.
-#
-# ConnectingTextureType.createTexture rebuilds the animation metadata as
-# frameWidth = w / layout.getWidth(), frameHeight = h / layout.getHeight(), and then crops each tile
-# with ImageHelper.createCropFramed, whose output is (tile*imageWidth/frameWidth) wide by
-# (tile*imageHeight/frameHeight) tall. Transcribing both for a 128x1920 sheet:
-#   per_tile_animation off -> frame 16x16 -> every tile becomes a 128x1920 sprite that vanilla reads
-#                             as an 8x120 grid, i.e. 960 frames of nonsense, 47 times over
-#   per_tile_animation on  -> frame 16x320 -> the per tile crop is 128x96, and 96/320 rounds to ZERO
-#                             rows, so the frame list comes out empty and SpriteContents$Ticker does
-#                             `% frames.size()`, which is the exact "/ by zero" in the crash report
-# Neither path produces the frames we asked for. So the ore is animated where the mechanism is plain
-# vanilla and well trodden - the glow variant's 16x80 strip, which is the same shape as the mod's own
-# stormyx_ore.png - and the connecting sheet is built from one still frame of each.
-#
-# The border cycle the owner drew is kept in the repo for whenever this is revisited. Doing it
-# properly needs the border and the ore split into two appended models, so the ore layer can animate
-# on the plain texture path while the border stays a still connecting texture; that is a bigger
-# change and wants testing in game, since a fully surrounded tile would then be entirely transparent.
-ANIMATED = {
-    "stormyx": dict(overlay_frames=5, border_frames=4, frametime=20, interpolate=True,
-                    # Which still frame the connecting sheet uses. 1-based.
-                    sheet_overlay=1, sheet_border=1),
-}
-
 # Edge names exactly as Fusion names them in TextureConnections. Because Fusion NAMES its
 # directions, there is no orientation ambiguity to resolve empirically - which is what caused the
 # reflected borders on the Continuity build. Do not reorder.
@@ -242,38 +215,10 @@ def root():
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def art_path(family, kind, frame=None):
-    """
-    kind is 'overlays' or 'borders'; both are laid out as assets/<kind>/<mod>/<family>_<x>.png.
-
-    Animated families number their files from 1 (<family>_overlay1.png); `frame` is that number.
-    """
+def art_path(family, kind):
+    """kind is 'overlays' or 'borders'; both are laid out as assets/<kind>/<mod>/<family>_<x>.png."""
     stem = "overlay" if kind == "overlays" else "border"
-    suffix = "" if frame is None else str(frame)
-    return os.path.join(root(), "assets", kind, FAMILIES[family]["art"], f"{family}_{stem}{suffix}.png")
-
-
-def art_frames(family, kind):
-    """Every frame of a family's art, in order. A still family has exactly one."""
-    from PIL import Image
-    animation = ANIMATED.get(family)
-    if animation is None:
-        return [Image.open(art_path(family, kind)).convert("RGBA")]
-    count = animation["overlay_frames" if kind == "overlays" else "border_frames"]
-    return [Image.open(art_path(family, kind, n)).convert("RGBA") for n in range(1, count + 1)]
-
-
-def animation_metadata(family):
-    """The vanilla `animation` mcmeta section for a family, or None.
-
-    This sits BESIDE the `fusion` section at the root of the .mcmeta, not inside it: Fusion reads it
-    through the vanilla AnimationMetadataSection, which is also why the frametime and interpolation
-    can simply be copied from the mod's own file.
-    """
-    animation = ANIMATED.get(family)
-    if animation is None:
-        return None
-    return {"interpolate": animation["interpolate"], "frametime": animation["frametime"]}
+    return os.path.join(root(), "assets", kind, FAMILIES[family]["art"], f"{family}_{stem}.png")
 
 
 def layout():
@@ -378,11 +323,13 @@ def build_tile(overlay, master, owners, connected_edges, inner_corners):
     return tile
 
 
-def build_sheet_frame(overlay, master, spec):
-    """One 8x6 connecting sheet, from one overlay frame and one border frame."""
+def build_sheet(family, spec):
+    """The whole 8x6 connecting sheet for one family, as a single image."""
     from PIL import Image
+    overlay = Image.open(art_path(family, "overlays")).convert("RGBA")
+    master = Image.open(art_path(family, "borders")).convert("RGBA")
     if overlay.size != master.size:
-        sys.exit(f"overlay {overlay.size} and border {master.size} must match")
+        sys.exit(f"{family}: overlay {overlay.size} and border {master.size} must match")
     size = overlay.width
     owners = mitre_owners(size)
     width, height = spec["grid"]["width"], spec["grid"]["height"]
@@ -391,22 +338,6 @@ def build_sheet_frame(overlay, master, spec):
         img = build_tile(overlay, master, owners, tile["connected_edges"], tile["inner_corners"])
         sheet.paste(img, (tile["x"] * size, tile["y"] * size))
     return sheet
-
-
-def build_sheet(family, spec):
-    """
-    The connecting texture for one family: always ONE still 8x6 sheet.
-
-    An animated family contributes a single chosen frame of each, never a stacked strip - see the
-    comment on ANIMATED for the arithmetic that makes an animated connecting sheet crash the game.
-    """
-    overlays = art_frames(family, "overlays")
-    borders = art_frames(family, "borders")
-    animation = ANIMATED.get(family)
-    if animation is None:
-        return build_sheet_frame(overlays[0], borders[0], spec)
-    return build_sheet_frame(overlays[animation["sheet_overlay"] - 1],
-                             borders[animation["sheet_border"] - 1], spec)
 
 
 def write_json(path, data):
@@ -607,30 +538,17 @@ def build(variant, spec):
         if not targets:
             print(f"  !! {family}: no targets - skipped")
             continue
-        animation = ANIMATED.get(family)
         for kind in ("overlays", "borders"):
-            frames = [None] if animation is None else range(
-                1, animation["overlay_frames" if kind == "overlays" else "border_frames"] + 1)
-            for frame in frames:
-                if not os.path.exists(art_path(family, kind, frame)):
-                    sys.exit(f"Missing art: {art_path(family, kind, frame)}")
+            if not os.path.exists(art_path(family, kind)):
+                sys.exit(f"Missing art: {art_path(family, kind)}")
 
         texture = f"{family}_overlay"
 
-        # 1. the texture: either the plain overlay, or the 8x6 connecting sheet. An animated ore
-        #    stacks its frames vertically in both cases, and vanilla's own animation section (added
-        #    at step 2) is what drives them.
+        # 1. the texture: either the plain overlay, or the 8x6 connecting sheet
         if bordered:
             build_sheet(family, spec).save(os.path.join(tex_dir, f"{texture}.png"))
-        elif animation is None:
-            shutil.copyfile(art_path(family, "overlays"), os.path.join(tex_dir, f"{texture}.png"))
         else:
-            overlays = art_frames(family, "overlays")
-            strip = Image.new("RGBA", (overlays[0].width, overlays[0].height * len(overlays)),
-                              (0, 0, 0, 0))
-            for k, frame_image in enumerate(overlays):
-                strip.paste(frame_image, (0, k * overlays[0].height))
-            strip.save(os.path.join(tex_dir, f"{texture}.png"))
+            shutil.copyfile(art_path(family, "overlays"), os.path.join(tex_dir, f"{texture}.png"))
 
         # 2. the mcmeta: emissive always; connecting only for the bordered variant. Both live in the
         #    SAME file, which is why this build needs no separate glow twin per tile.
@@ -654,13 +572,7 @@ def build(variant, spec):
                 ],
             })
         check_fusion_keys(meta)
-        # `animation` is a sibling of `fusion` at the root of the mcmeta, not a Fusion key: Fusion
-        # reads it back through vanilla's AnimationMetadataSection. It is written ONLY for the plain
-        # overlay - the connecting sheet is a still image and must not claim otherwise.
-        mcmeta = {"fusion": meta}
-        if not bordered and animation_metadata(family) is not None:
-            mcmeta = {"animation": animation_metadata(family), "fusion": meta}
-        write_json(os.path.join(tex_dir, f"{texture}.png.mcmeta"), mcmeta)
+        write_json(os.path.join(tex_dir, f"{texture}.png.mcmeta"), {"fusion": meta})
 
         # 3. the model that draws it, and 4. the modifier that APPENDS that model to each target
         #    block without touching the block's own model.
