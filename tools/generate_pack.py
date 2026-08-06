@@ -152,7 +152,7 @@ for _gem in ("ruby", "sapphire", "ametrine", "jade"):
 MYTHIC_METALS = {
     "adamantite":   ["adamantite_ore", "deepslate_adamantite_ore"],
     "aquarium":     ["aquarium_ore"],
-    "banglum":      ["banglum_ore", "nether_banglum_ore"],
+    "banglum":      ["banglum_ore"],                     # nether_banglum is split out below
     "carmot":       ["carmot_ore", "deepslate_carmot_ore"],
     "kyber":        ["kyber_ore", "calcite_kyber_ore"],
     "manganese":    ["manganese_ore"],
@@ -168,7 +168,7 @@ MYTHIC_METALS = {
     "quadrillum":   ["quadrillum_ore"],
     "runite":       ["runite_ore", "deepslate_runite_ore"],
     "silver":       ["silver_ore"],
-    "starrite":     ["starrite_ore", "calcite_starrite_ore", "end_stone_starrite_ore"],
+    "starrite":     ["starrite_ore"],                    # the host variants are split out below
     "stormyx":      ["stormyx_ore", "blackstone_stormyx_ore"],
     "tin":          ["tin_ore"],
     "unobtainium":  ["unobtainium_ore", "deepslate_unobtainium_ore"],
@@ -176,6 +176,30 @@ MYTHIC_METALS = {
 for _metal, _blocks in MYTHIC_METALS.items():
     FAMILIES[_metal] = dict(art="mythic metals",
                             targets=[f"mythicmetals:{b}" for b in _blocks])
+
+# SPLIT FAMILIES: one ore whose hosts do not share one piece of artwork.
+#
+# Mythic Metals draws nether banglum differently from overworld banglum, and draws its calcite and
+# end stone starrite differently from plain starrite. Different art means a different sprite, and a
+# sprite is what a connecting texture is keyed on, so these cannot stay in one family.
+#
+# `group` keeps them joined anyway. Connection is declared per FACE from a block list, not implied by
+# a shared sprite, so two families in the same group each list every block in the group and each
+# omits its own border on a shared edge. The outline still reads as one body across the boundary even
+# though the two halves are drawn from different art.
+#
+# `overlay_file` / `border_file` point at an art file whose name is not <family>_<kind>.png. Both of
+# these reuse their sibling's hand drawn border, which suits them: the two banglum overlays are
+# within 8 of each other per channel and the two starrite overlays within 2.
+FAMILIES["banglum"]["group"] = "banglum"
+FAMILIES["nether_banglum"] = dict(art="mythic metals", group="banglum",
+                                  targets=["mythicmetals:nether_banglum_ore"],
+                                  border_file="banglum_border")
+FAMILIES["starrite"]["group"] = "starrite"
+FAMILIES["starrite_hosted"] = dict(art="mythic metals", group="starrite",
+                                   targets=["mythicmetals:calcite_starrite_ore",
+                                            "mythicmetals:end_stone_starrite_ore"],
+                                   overlay_file="starrite_overlay2", border_file="starrite_border")
 
 # STORMYX IS DELIBERATELY NOT ANIMATED, AND THIS IS SETTLED - do not try it again.
 #
@@ -216,9 +240,15 @@ def root():
 
 
 def art_path(family, kind):
-    """kind is 'overlays' or 'borders'; both are laid out as assets/<kind>/<mod>/<family>_<x>.png."""
+    """
+    kind is 'overlays' or 'borders'; both are laid out as assets/<kind>/<mod>/<family>_<x>.png.
+
+    A family may override either with `overlay_file` / `border_file`, which is how a split family
+    reuses its sibling's art. See the split families above.
+    """
     stem = "overlay" if kind == "overlays" else "border"
-    return os.path.join(root(), "assets", kind, FAMILIES[family]["art"], f"{family}_{stem}.png")
+    name = FAMILIES[family].get(f"{stem}_file", f"{family}_{stem}")
+    return os.path.join(root(), "assets", kind, FAMILIES[family]["art"], f"{name}.png")
 
 
 def layout():
@@ -278,6 +308,21 @@ def mod_block_targets(family):
 
 def family_targets(family):
     return list(FAMILIES[family]["targets"]) + mod_block_targets(family)
+
+
+def connection_blocks(family):
+    """
+    Every block this family's outline should join to: its own targets, plus those of any family
+    sharing its `group`. Identical for every member, so the join is symmetric by construction.
+    """
+    group = FAMILIES[family].get("group")
+    if group is None:
+        return family_targets(family)
+    blocks = []
+    for other in FAMILIES:
+        if FAMILIES[other].get("group") == group:
+            blocks += family_targets(other)
+    return blocks
 
 
 def mitre_owners(size):
@@ -568,7 +613,8 @@ def build(variant, spec):
                 # was ignored WITHOUT ANY WARNING and connection fell back to the default
                 # is_same_block - i.e. each host stone's variant bordered only against itself.
                 "connections": [
-                    {"type": "match_block", "blocks": targets, "ignore_missing": True},
+                    {"type": "match_block", "blocks": connection_blocks(family),
+                     "ignore_missing": True},
                 ],
             })
         check_fusion_keys(meta)

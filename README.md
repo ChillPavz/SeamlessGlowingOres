@@ -27,8 +27,14 @@ Pillow is required and lives on the 3.14 install. Output:
 | `build/SeamlessGlowingOres-Glow.zip` | Emissive only |
 | `build/SeamlessGlowingOres-Border.zip` | Emissive plus the 47 tile connected outline |
 
-42 families covering 135 blocks: vanilla, Seamless Ores, Create zinc, Mythic Upgrades, Mythic
-Metals, plus ancient debris as a whole block glow.
+44 families covering 135 blocks: vanilla, Seamless Ores, Create zinc, Mythic Upgrades, Mythic
+Metals, plus ancient debris as a whole block glow. That is 42 distinct ores; banglum and starrite
+each split into two families because Mythic Metals draws some of their hosts differently, and a
+sprite is what a connecting texture is keyed on.
+
+Split families share a `group`, so both halves declare the same connection block list and still join
+into one outline across the boundary even though they are drawn from different art. `overlay_file`
+and `border_file` let the second half reuse its sibling's border.
 
 `PACK_FORMAT` is deliberately **15, not 26.2's 88**. Grepping the real client jars shows 1.20.1 knows
 only `pack_format`, 1.21.1 adds `supported_formats`, and 1.21.11 adds `min_format`/`max_format`, so
@@ -119,8 +125,30 @@ tile a 128x1920 sprite read as an 8 by 120 grid (960 junk frames, 47 times over)
 zero rows. The empty frame list then reaches `SpriteContents$Ticker`, which does `% frames.size()`
 and crashes the game on load.
 
-Animating only the plain overlay in the glow variant did not take either, so there is no half measure
-worth keeping. Do not spend time here again without a specific new reason.
+A plain, non-connecting Fusion texture CAN animate: `VanillaTextureType.createTexture` calls
+`SpriteImageSource.vanilla(image, animationMetadata)`, and `FusionSpriteContents` carries the frame
+list and its own ticker. So an animated glow is mechanically available; only the bordered sheet is
+closed off. That route is written up under "an animated third variant" below rather than retried
+here, since stormyx itself is settled.
+
+## An animated third variant, if it is ever wanted
+
+Feasible for the **Glow style only**, and the blocker is art rather than code.
+
+The mechanism is available: a plain Fusion texture keeps vanilla's `animation` section, so an N frame
+vertical strip per family plus `{"animation": {...}}` beside the `fusion` section is all the format
+needs. The bordered style can never join in, for the reason above.
+
+The cost is N frames per family across 44 families, which is not worth hand drawing. The cheap route
+is to DERIVE the frames from the single overlay each family already has, for example a brightness or
+saturation cycle, so no new art is needed and the result stays our own work. Every ore would pulse in
+the same rhythm, which is a different look from hand authored shimmer; judge that on one family in
+game before generating all 44.
+
+For reference, packs that do animate ores generally replace the block's texture outright rather than
+appending a layer, which is why vanilla animation just works for them. That trade gives up everything
+the append design buys: other packs showing through underneath, one overlay per ore instead of one
+per ore per host, and a file measured in tens of kilobytes rather than thousands of PNGs.
 
 ## Mythic Metals
 
