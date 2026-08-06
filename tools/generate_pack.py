@@ -101,16 +101,40 @@ for _gem in ("aquamarine", "citrine", "peridot", "topaz", "necoium"):
 for _gem in ("ruby", "sapphire", "ametrine", "jade"):
     FAMILIES[_gem] = dict(art="mythic upgrades", targets=[f"mythicupgrades:{_gem}_ore"])
 
-# MYTHIC METALS - art is ready (20 families) but DELIBERATELY NOT BUILT.
-# The mod is Fabric-only and stops at 1.21.4, so there are no 26.2 block ids to target and no way to
-# verify them. Shipping modifiers pointing at blocks that cannot exist would be dead weight at best.
-# When the port lands, read the ids out of that jar and add the families here - the art needs no
-# changes. See ../PROJECTS.md.
-MYTHIC_METALS_PENDING = [
-    "adamantite", "aquarium", "banglum", "carmot", "kyber", "manganese", "midas_gold", "morkite",
-    "mythril", "orichalcum", "osmium", "palladium", "platinum", "prometheum", "quadrillum",
-    "runite", "silver", "starrite", "tin", "unobtainium",
-]
+# MYTHIC METALS (namespace `mythicmetals`, Fabric only, tops out at 1.21.4 so there is no 26.2
+# build). Block ids read from mythicmetals-0.25.3+1.21.4.jar rather than guessed. Included anyway
+# because one pack file serves many versions: at 26.2 these targets simply do not resolve, and on
+# 1.20.1 or 1.21.4 they light up. `stormyx` is deliberately absent - the mod has it, our art does not.
+#
+# Note the mod already ships its OWN host variants for a few of these (tuff_orichalcum_ore,
+# smooth_basalt_orichalcum_ore, calcite_kyber_ore, end_stone_starrite_ore, blackstone_stormyx_ore),
+# so those join the same family and connect to the plain ore by construction.
+MYTHIC_METALS = {
+    "adamantite":   ["adamantite_ore", "deepslate_adamantite_ore"],
+    "aquarium":     ["aquarium_ore"],
+    "banglum":      ["banglum_ore", "nether_banglum_ore"],
+    "carmot":       ["carmot_ore", "deepslate_carmot_ore"],
+    "kyber":        ["kyber_ore", "calcite_kyber_ore"],
+    "manganese":    ["manganese_ore"],
+    "midas_gold":   ["midas_gold_ore"],
+    "morkite":      ["morkite_ore", "deepslate_morkite_ore"],
+    "mythril":      ["mythril_ore", "deepslate_mythril_ore"],
+    "orichalcum":   ["orichalcum_ore", "deepslate_orichalcum_ore",
+                     "smooth_basalt_orichalcum_ore", "tuff_orichalcum_ore"],
+    "osmium":       ["osmium_ore"],
+    "palladium":    ["palladium_ore"],
+    "platinum":     ["platinum_ore"],
+    "prometheum":   ["prometheum_ore", "deepslate_prometheum_ore"],
+    "quadrillum":   ["quadrillum_ore"],
+    "runite":       ["runite_ore", "deepslate_runite_ore"],
+    "silver":       ["silver_ore"],
+    "starrite":     ["starrite_ore", "calcite_starrite_ore", "end_stone_starrite_ore"],
+    "tin":          ["tin_ore"],
+    "unobtainium":  ["unobtainium_ore", "deepslate_unobtainium_ore"],
+}
+for _metal, _blocks in MYTHIC_METALS.items():
+    FAMILIES[_metal] = dict(art="mythic metals",
+                            targets=[f"mythicmetals:{b}" for b in _blocks])
 
 # Edge names exactly as Fusion names them in TextureConnections. Because Fusion NAMES its
 # directions, there is no orientation ambiguity to resolve empirically - which is what caused the
@@ -154,6 +178,17 @@ def layout():
     return data
 
 
+def mod_asset_dir(*parts):
+    """A directory inside the MOD's assets, or a path that simply will not exist when it is absent.
+
+    The mod lives in a separate repository, so every use of this must tolerate it being missing:
+    this pack has to build standalone.
+    """
+    return os.path.normpath(os.path.join(
+        root(), "..", "seamlessores-26.2-multiloader", "common", "src", "main", "resources",
+        "assets", MOD_NAMESPACE, *parts))
+
+
 def mod_block_targets(family):
     """
     Our own blocks in this family, discovered from the mod's blockstates rather than hardcoded.
@@ -161,9 +196,7 @@ def mod_block_targets(family):
     The mod names them <host>_<ore>_ore. Reading the real directory means a block we add or drop in
     the mod cannot silently fall out of step with the pack.
     """
-    states = os.path.join(root(), "..", "seamlessores-26.2-multiloader", "common", "src", "main",
-                          "resources", "assets", MOD_NAMESPACE, "blockstates")
-    states = os.path.normpath(states)
+    states = mod_asset_dir("blockstates")
     if not os.path.isdir(states):
         return []
     suffix = FAMILIES[family].get("suffix", family)
@@ -317,6 +350,34 @@ def check_fusion_keys(meta):
             sys.exit(f"Unknown connection-predicate type {predicate.get('type')!r}")
 
 
+def warn_if_overlays_drifted():
+    """
+    Warn when a family's overlay here differs from the MOD's copy of the same file.
+
+    The two are deliberately duplicated: this repo is private and separate, so the pack has to build
+    without the mod checked out. But the mod's blocks DRAW the overlay and this pack derives the glow
+    and the connected sheet from it, so if the two copies diverge the glow silently stops lining up
+    with the blocks it is meant to sit on. Nothing in game would tell you.
+
+    Skipped entirely when the mod is not present alongside, which is the normal standalone case.
+    """
+    mod_textures = mod_asset_dir("textures", "block")
+    if not os.path.isdir(mod_textures):
+        return
+    drifted = []
+    for family in FAMILIES:
+        ours = art_path(family, "overlays")
+        theirs = os.path.join(mod_textures, f"{FAMILIES[family].get('overlay', family)}_overlay.png")
+        if not (os.path.exists(ours) and os.path.exists(theirs)):
+            continue
+        with open(ours, "rb") as a, open(theirs, "rb") as b:
+            if a.read() != b.read():
+                drifted.append(family)
+    if drifted:
+        print(f"  !! OVERLAY DRIFT: {', '.join(drifted)} differ from the mod's copy.")
+        print("  !! The glow will not line up with those blocks in game. Sync them before shipping.")
+
+
 def assert_owns_only_its_namespace(out_dir):
     """
     Refuse to zip if the pack writes into anyone else's namespace.
@@ -447,8 +508,8 @@ def main():
             print(f"  {family:<12} ({FAMILIES[family]['art']:<15}) {len(targets):2d}  "
                   f"{', '.join(targets)}")
         print(f"\n  {len(FAMILIES)} families, {total} blocks covered")
-        print(f"  pending (art ready, mod not at 26.2): "
-              f"{len(MYTHIC_METALS_PENDING)} Mythic Metals families")
+        print(f"  Mythic Metals families ({len(MYTHIC_METALS)}): active only where that mod exists,"
+              f" which is 1.21.4 and below")
         return
 
     try:
@@ -456,6 +517,7 @@ def main():
     except ImportError:
         sys.exit("Pillow is required. Run this with 'py -3.14'.")
 
+    warn_if_overlays_drifted()
     spec = layout()
     build("glow", spec)
     print()
