@@ -95,14 +95,15 @@ FAMILIES = {
     "coal":     dict(art=VANILLA, targets=["minecraft:coal_ore", "minecraft:deepslate_coal_ore"]),
     "iron":     dict(art=VANILLA, targets=["minecraft:iron_ore", "minecraft:deepslate_iron_ore"]),
     "copper":   dict(art=VANILLA, targets=["minecraft:copper_ore", "minecraft:deepslate_copper_ore"]),
-    "gold":     dict(art=VANILLA, targets=["minecraft:gold_ore", "minecraft:deepslate_gold_ore"]),
+    "gold":     dict(art=VANILLA, targets=["minecraft:gold_ore", "minecraft:deepslate_gold_ore"],
+                    hosts="overworld"),
     "lapis":    dict(art=VANILLA, targets=["minecraft:lapis_ore", "minecraft:deepslate_lapis_ore"]),
     "diamond":  dict(art=VANILLA, targets=["minecraft:diamond_ore", "minecraft:deepslate_diamond_ore"]),
     "emerald":  dict(art=VANILLA, targets=["minecraft:emerald_ore", "minecraft:deepslate_emerald_ore"]),
     "redstone": dict(art=VANILLA, targets=["minecraft:redstone_ore", "minecraft:deepslate_redstone_ore"]),
     # Nether gold is its own family: different art, different hosts, and it never touches the
     # overworld gold it would otherwise be grouped with.
-    "nether_gold": dict(art=VANILLA, targets=["minecraft:nether_gold_ore"], suffix="gold"),
+    "nether_gold": dict(art=VANILLA, targets=["minecraft:nether_gold_ore"], suffix="gold", hosts="nether"),
     "quartz":      dict(art=VANILLA, targets=["minecraft:nether_quartz_ore"]),
     # Create. Mod id and namespace are `create` for every Create variant (Create Fly included).
     "zinc":     dict(art="create", targets=["create:zinc_ore", "create:deepslate_zinc_ore"]),
@@ -193,8 +194,12 @@ for _metal, _blocks in MYTHIC_METALS.items():
 # `overlay_file` / `border_file` point at an art file whose name is not <family>_<kind>.png. The two
 # starrite host variants share one overlay and all of these reuse their sibling's hand drawn border,
 # which suits them: the two banglum overlays are within 8 of each other per channel.
+# Both banglum families take the suffix `banglum`, because OUR blocks are named
+# <host>_banglum_ore for each form exactly as our gold ones are; the host tells them apart.
+FAMILIES["banglum"]["hosts"] = "overworld"
 FAMILIES["nether_banglum"] = dict(art="mythic metals",
                                   targets=["mythicmetals:nether_banglum_ore"],
+                                  suffix="banglum", hosts="nether",
                                   border_file="banglum_border")
 FAMILIES["calcite_starrite"] = dict(art="mythic metals",
                                     targets=["mythicmetals:calcite_starrite_ore"],
@@ -202,6 +207,32 @@ FAMILIES["calcite_starrite"] = dict(art="mythic metals",
 FAMILIES["end_stone_starrite"] = dict(art="mythic metals",
                                       targets=["mythicmetals:end_stone_starrite_ore"],
                                       overlay_file="starrite_overlay2", border_file="starrite_border")
+
+# ANIMATED FAMILIES. Values copied from the SOURCE MOD'S OWN mcmeta so the glow pulses in step with
+# the ore underneath it, rather than being chosen.
+#
+# WHY THESE NEED A SECOND APPENDED MODEL IN THE BORDER VARIANT: a Fusion `connecting` texture CANNOT
+# animate. `per_tile_animation` exists but its arithmetic collapses to an empty frame list and the
+# game dies with ArithmeticException: / by zero before the main menu. `scrolling` is no help either
+# - it is a different value of the same single `type` key, so a texture is connecting OR scrolling,
+# never both, and it slides a window rather than flipping frames.
+#
+# The way out is that `append` takes a LIST. For an animated family the Border variant appends TWO
+# models: a plain plate carrying the animated ore glow (the ordinary vanilla sprite path, which does
+# animate) and a connecting sheet carrying ONLY the border, still. Non-animated families keep the
+# single proven composited sheet, so this new path is confined to the two ores that need it.
+ANIMATED = {
+    "stormyx":     {"frametime": 20, "interpolate": True},   # 5 frames, matches stormyx_ore
+    "unobtainium": {"frametime": 60, "interpolate": True},   # 4 frames, deepslate ore
+}
+
+
+def frame_count(image):
+    """Frames in a vertical strip, or 1 for a plain square texture."""
+    if image.width and image.height % image.width == 0:
+        return image.height // image.width
+    return 1
+
 
 # Edge names exactly as Fusion names them in TextureConnections. Because Fusion NAMES its
 # directions, there is no orientation ambiguity to resolve empirically - which is what caused the
@@ -251,15 +282,36 @@ def layout():
     return data
 
 
-def mod_asset_dir(*parts):
-    """A directory inside the MOD's assets, or a path that simply will not exist when it is absent.
+# Host stones the mod uses as an id PREFIX. A block only counts as ours if its prefix is one of
+# these exactly. Without that check `basalt_midas_gold_ore` ends with `_gold_ore` and would be
+# swept into the vanilla `gold` family, whose prefix would come out as the non-host "basalt_midas".
+MOD_HOSTS = {"granite", "diorite", "andesite", "tuff", "basalt", "blackstone"}
+NETHER_HOSTS = {"basalt", "blackstone"}
 
-    The mod lives in a separate repository, so every use of this must tolerate it being missing:
-    this pack has to build standalone.
+
+def mod_asset_dirs(*parts):
+    """Every branch of the MOD's assets, newest content first.
+
+    One pack file serves every Minecraft version, so it should list the UNION of our blocks across
+    branches: `ignore_missing_targets` skips the ones that do not exist on the version in use. The
+    branches genuinely differ - Mythic Metals support lives on 1.21.x, so the 26.2 branch alone
+    would miss 68 blocks - hence a scan rather than one hardcoded path.
+
+    The mod lives in a separate repository, so this must tolerate all of them being absent: the pack
+    has to build standalone.
     """
-    return os.path.normpath(os.path.join(
-        root(), "..", "seamlessores-26.2-multiloader", "common", "src", "main", "resources",
-        "assets", MOD_NAMESPACE, *parts))
+    parent = os.path.normpath(os.path.join(root(), ".."))
+    if not os.path.isdir(parent):
+        return []
+    found = []
+    for name in sorted(os.listdir(parent)):
+        if not (name.startswith("seamlessores-") and name.endswith("-multiloader")):
+            continue
+        path = os.path.join(parent, name, "common", "src", "main", "resources",
+                            "assets", MOD_NAMESPACE, *parts)
+        if os.path.isdir(path):
+            found.append(path)
+    return found
 
 
 def mod_block_targets(family):
@@ -269,31 +321,32 @@ def mod_block_targets(family):
     The mod names them <host>_<ore>_ore. Reading the real directory means a block we add or drop in
     the mod cannot silently fall out of step with the pack.
     """
-    states = mod_asset_dir("blockstates")
-    if not os.path.isdir(states):
-        return []
     suffix = FAMILIES[family].get("suffix", family)
-    # `gold` and `nether_gold` both produce blocks named <host>_gold_ore and are told apart only by
-    # the host. Every other family owns its whole suffix - including quartz, whose only variants ARE
+    # An ore with BOTH an overworld and a nether form produces the same <host>_<suffix>_ore name for
+    # each, and only the host tells them apart: vanilla gold vs nether gold, and Mythic Metals'
+    # banglum vs nether banglum. Declared per family rather than hardcoded by name, so the next such
+    # pair is one key. Everything else takes any host - including quartz, whose only variants ARE
     # the nether ones, so it must not be filtered as if it were overworld.
-    nether_hosts = {"basalt", "blackstone"}
-    if family == "nether_gold":
-        allowed = lambda host: host in nether_hosts          # noqa: E731
-    elif family == "gold":
-        allowed = lambda host: host not in nether_hosts      # noqa: E731
+    hosts = FAMILIES[family].get("hosts")
+    if hosts == "nether":
+        allowed = lambda host: host in NETHER_HOSTS          # noqa: E731
+    elif hosts == "overworld":
+        allowed = lambda host: host not in NETHER_HOSTS      # noqa: E731
     else:
         allowed = lambda host: True                          # noqa: E731
 
-    found = []
-    for name in sorted(os.listdir(states)):
-        if not name.endswith(".json"):
-            continue
-        block = name[:-5]
-        if not block.endswith(f"_{suffix}_ore"):
-            continue
-        if allowed(block[: -len(f"_{suffix}_ore")]):
-            found.append(f"{MOD_NAMESPACE}:{block}")
-    return found
+    found = set()
+    for states in mod_asset_dirs("blockstates"):
+        for name in sorted(os.listdir(states)):
+            if not name.endswith(".json"):
+                continue
+            block = name[:-5]
+            if not block.endswith(f"_{suffix}_ore"):
+                continue
+            host = block[: -len(f"_{suffix}_ore")]
+            if host in MOD_HOSTS and allowed(host):
+                found.add(f"{MOD_NAMESPACE}:{block}")
+    return sorted(found)
 
 
 def family_targets(family):
@@ -343,14 +396,24 @@ def build_tile(overlay, master, owners, connected_edges, inner_corners):
     return tile
 
 
-def build_sheet(family, spec):
-    """The whole 8x6 connecting sheet for one family, as a single image."""
+def build_sheet(family, spec, ore_layer=True):
+    """The whole 8x6 connecting sheet for one family, as a single image.
+
+    With ore_layer=False the tiles carry ONLY the border on a transparent field, which is what an
+    animated family needs: its ore glow is appended separately as a plain animated plate, because a
+    connecting texture cannot animate.
+    """
     from PIL import Image
-    overlay = Image.open(art_path(family, "overlays")).convert("RGBA")
     master = Image.open(art_path(family, "borders")).convert("RGBA")
-    if overlay.size != master.size:
-        sys.exit(f"{family}: overlay {overlay.size} and border {master.size} must match")
-    size = overlay.width
+    if ore_layer:
+        overlay = Image.open(art_path(family, "overlays")).convert("RGBA")
+        if overlay.size != master.size:
+            sys.exit(f"{family}: overlay {overlay.size} and border {master.size} must match. "
+                     f"An animated overlay must be declared in ANIMATED so its ore layer is split "
+                     f"out instead of being composited into the sheet.")
+    else:
+        overlay = Image.new("RGBA", master.size, (0, 0, 0, 0))
+    size = master.width
     owners = mitre_owners(size)
     width, height = spec["grid"]["width"], spec["grid"]["height"]
     sheet = Image.new("RGBA", (width * size, height * size), (0, 0, 0, 0))
@@ -451,18 +514,25 @@ def warn_if_overlays_drifted():
 
     Skipped entirely when the mod is not present alongside, which is the normal standalone case.
     """
-    mod_textures = mod_asset_dir("textures", "block")
-    if not os.path.isdir(mod_textures):
+    dirs = mod_asset_dirs("textures", "block")
+    if not dirs:
         return
     drifted = []
     for family in FAMILIES:
         ours = art_path(family, "overlays")
-        theirs = os.path.join(mod_textures, f"{FAMILIES[family].get('overlay', family)}_overlay.png")
-        if not (os.path.exists(ours) and os.path.exists(theirs)):
+        if not os.path.exists(ours):
             continue
-        with open(ours, "rb") as a, open(theirs, "rb") as b:
-            if a.read() != b.read():
-                drifted.append(family)
+        name = f"{FAMILIES[family].get('overlay', family)}_overlay.png"
+        # Compare against every branch that has the file; they should all agree, and a mismatch on
+        # any of them is worth surfacing.
+        for mod_textures in dirs:
+            theirs = os.path.join(mod_textures, name)
+            if not os.path.exists(theirs):
+                continue
+            with open(ours, "rb") as a, open(theirs, "rb") as b:
+                if a.read() != b.read():
+                    drifted.append(f"{family} ({os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(mod_textures))))))})")
+                    break
     if drifted:
         print(f"  !! OVERLAY DRIFT: {', '.join(drifted)} differ from the mod's copy.")
         print("  !! The glow will not line up with those blocks in game. Sync them before shipping.")
@@ -562,19 +632,52 @@ def build(variant, spec):
             if not os.path.exists(art_path(family, kind)):
                 sys.exit(f"Missing art: {art_path(family, kind)}")
 
-        texture = f"{family}_overlay"
+        from PIL import Image
+        animation = ANIMATED.get(family)
+        overlay_art = Image.open(art_path(family, "overlays")).convert("RGBA")
+        frames = frame_count(overlay_art)
+        if animation and frames == 1:
+            sys.exit(f"{family} is declared in ANIMATED but its overlay is a single frame")
+        if frames > 1 and not animation:
+            sys.exit(f"{family}'s overlay has {frames} frames but no ANIMATED entry, so it would "
+                     f"be stitched as one tall still image")
 
-        # 1. the texture: either the plain overlay, or the 8x6 connecting sheet
-        if bordered:
-            build_sheet(family, spec).save(os.path.join(tex_dir, f"{texture}.png"))
-        else:
+        # An animated family splits into two appended layers; everything else keeps the single
+        # composited sheet that is already proven in game.
+        split = bordered and animation is not None
+        appended = []
+
+        # --- layer 1: the ore glow -----------------------------------------------------------
+        # Plain (non-connecting) for the Glow variant and for any animated Border family, because
+        # only a plain sprite can animate. A non-animated Border family folds this layer into the
+        # sheet below instead, exactly as before.
+        if not bordered or split:
+            texture = f"{family}_overlay"
             shutil.copyfile(art_path(family, "overlays"), os.path.join(tex_dir, f"{texture}.png"))
+            meta = {"emissive": True, "render_type": "cutout"}
+            check_fusion_keys(meta)
+            payload = {"fusion": meta}
+            if animation:
+                # The vanilla animation section sits BESIDE `fusion` at the root; Fusion reads it
+                # through AnimationMetadataSection and keeps the frame list on its own sprite.
+                payload["animation"] = animation
+            write_json(os.path.join(tex_dir, f"{texture}.png.mcmeta"), payload)
+            write_json(os.path.join(out_dir, "assets", PACK_NAMESPACE, "models", "block",
+                                    f"{texture}.json"), {
+                "loader": "fusion:model",
+                "type": "base",
+                "parent": "block/cube_all",
+                "textures": {"all": f"{PACK_NAMESPACE}:block/{texture}"},
+            })
+            appended.append(f"{PACK_NAMESPACE}:block/{texture}")
 
-        # 2. the mcmeta: emissive always; connecting only for the bordered variant. Both live in the
-        #    SAME file, which is why this build needs no separate glow twin per tile.
-        meta = {"emissive": True, "render_type": "cutout"}
+        # --- layer 2: the connecting border ---------------------------------------------------
         if bordered:
-            meta.update({
+            texture = f"{family}_border" if split else f"{family}_overlay"
+            build_sheet(family, spec, ore_layer=not split).save(os.path.join(tex_dir, f"{texture}.png"))
+            meta = {
+                "emissive": True,
+                "render_type": "cutout",
                 "type": "connecting",
                 "layout": "full",
                 # Connect to every block in the family, so a granite iron ore borders seamlessly
@@ -590,21 +693,23 @@ def build(variant, spec):
                 "connections": [
                     {"type": "match_block", "blocks": targets, "ignore_missing": True},
                 ],
+            }
+            check_fusion_keys(meta)
+            write_json(os.path.join(tex_dir, f"{texture}.png.mcmeta"), {"fusion": meta})
+            write_json(os.path.join(out_dir, "assets", PACK_NAMESPACE, "models", "block",
+                                    f"{texture}.json"), {
+                "loader": "fusion:model",
+                "type": "connecting",
+                "parent": "block/cube_all",
+                "textures": {"all": f"{PACK_NAMESPACE}:block/{texture}"},
             })
-        check_fusion_keys(meta)
-        write_json(os.path.join(tex_dir, f"{texture}.png.mcmeta"), {"fusion": meta})
+            appended.append(f"{PACK_NAMESPACE}:block/{texture}")
 
-        # 3. the model that draws it, and 4. the modifier that APPENDS that model to each target
-        #    block without touching the block's own model.
-        write_json(os.path.join(out_dir, "assets", PACK_NAMESPACE, "models", "block", f"{texture}.json"), {
-            "loader": "fusion:model",
-            "type": "connecting" if bordered else "base",
-            "parent": "block/cube_all",
-            "textures": {"all": f"{PACK_NAMESPACE}:block/{texture}"},
-        })
+        # The modifier APPENDS those models to each target block without touching its own model.
+        # Order matters: the border goes on last so it draws over the ore glow.
         modifier = {
             "targets": targets,
-            "append": [f"{PACK_NAMESPACE}:block/{texture}"],
+            "append": appended,
             "show_breaking_overlay": False,
             # WITHOUT THIS, ONE MISSING BLOCK KILLS THE WHOLE FAMILY - including vanilla's own ore.
             # Fusion parses the file as a unit: the first target it cannot resolve throws, the file
@@ -621,7 +726,10 @@ def build(variant, spec):
         write_json(os.path.join(out_dir, "assets", PACK_NAMESPACE, "fusion", "model_modifiers", "blocks",
                                 f"{family}.json"), modifier)
 
-        print(f"  {family:<12} {len(targets):2d} targets" + ("  + 47-tile sheet" if bordered else ""))
+        note = "  + 47-tile sheet" if bordered else ""
+        if split:
+            note = f"  + animated plate ({frames}f) + border sheet"
+        print(f"  {family:<12} {len(targets):2d} targets{note}")
         built += 1
 
     built += build_whole_block_glow(out_dir, tex_dir)
