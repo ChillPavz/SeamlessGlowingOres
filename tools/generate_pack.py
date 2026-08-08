@@ -221,9 +221,18 @@ FAMILIES["end_stone_starrite"] = dict(art="mythic metals",
 # models: a plain plate carrying the animated ore glow (the ordinary vanilla sprite path, which does
 # animate) and a connecting sheet carrying ONLY the border, still. Non-animated families keep the
 # single proven composited sheet, so this new path is confined to the two ores that need it.
+# NO `interpolate`, deliberately. The whole crashing code path is
+# SpriteContents$Interpolation.apply, which vanilla only ever enters for an INTERPOLATED sprite, and
+# it died on `(frame + 1) % frames.size()` with an empty frame list. Every sprite we ship is
+# well formed by vanilla's own arithmetic (16x80 -> 5 frames, 16x64 -> 4), so the empty list is
+# built inside Fusion's sprite pipeline, which these plates go through and Mythic Metals' own
+# textures do not - which is why theirs interpolate happily and ours crashed.
+#
+# Dropping the flag removes that code path entirely and costs only the cross fade between frames;
+# the animation still plays at the same rate. Restore it only with an in-game test to back it up.
 ANIMATED = {
-    "stormyx":     {"frametime": 20, "interpolate": True},   # 5 frames, matches stormyx_ore
-    "unobtainium": {"frametime": 60, "interpolate": True},   # 4 frames, deepslate ore
+    "stormyx":     {"frametime": 20},   # 5 frames, matches Mythic Metals' own stormyx_ore
+    "unobtainium": {"frametime": 60},   # 4 frames, matches its deepslate ore
 }
 
 
