@@ -208,6 +208,199 @@ FAMILIES["end_stone_starrite"] = dict(art="mythic metals",
                                       targets=["mythicmetals:end_stone_starrite_ore"],
                                       overlay_file="starrite_overlay2", border_file="starrite_border")
 
+
+def add_family(key, **spec):
+    """
+    Register a family, refusing to overwrite an existing one.
+
+    FAMILIES is a plain dict, so a repeated key silently REPLACES a working family and nothing
+    warns. That is not hypothetical: the third party table below collides with Mythic Upgrades on
+    ruby, sapphire, peridot, topaz, aquamarine and citrine, and with Mythic Metals on silver, tin,
+    osmium, palladium and platinum. Assigning directly would have deleted eleven working families.
+    """
+    if key in FAMILIES:
+        raise SystemExit(f"duplicate family key {key!r}: it would overwrite an existing family")
+    FAMILIES[key] = spec
+
+
+# ---------------------------------------------------------------------------
+# THIRD PARTY ORE MODS
+#
+# Every block id and every host was read out of the real jar, never guessed. All of these place
+# their ore through the SAME vanilla replaceables tags, so they are pure restyles.
+#
+# KEYS ARE PREFIXED BY MOD, and that is load bearing rather than cosmetic. See add_family above.
+# Because the key no longer matches the art filename, each family points at its art explicitly with
+# overlay_file / border_file.
+#
+# NONE OF THESE SET `suffix`, DELIBERATELY. mod_block_targets derives the block suffix from the key,
+# and Seamless Ores already ships granite_topaz_ore and friends for MYTHIC UPGRADES. Giving Silent
+# Gems' topaz a bare suffix of "topaz" would pull those blocks into the wrong family and append two
+# overlays to them. Add `suffix` per family only when Seamless Ores actually gains variants for that
+# mod, and resolve the ore-name clashes (lead, tin, silver, sapphire) at that point.
+#
+# prefix -> (art folder, namespace, {family base: (art file stem, [block names])})
+_SG_GEMS = ["alexandrite", "ammolite", "aquamarine", "black_diamond", "carnelian", "citrine",
+            "garnet", "heliodor", "iolite", "kyanite", "moldavite", "pearl", "peridot",
+            "rose_quartz", "ruby", "sapphire", "tanzanite", "topaz", "turquoise", "white_diamond"]
+
+THIRD_PARTY = {
+    # Silent Gems: every gem has stone, deepslate AND netherrack forms. Opal is deliberately absent:
+    # it is alpha blended, so it absorbs the colour of the rock behind it and one overlay cannot
+    # serve all four hosts. Deferred with All the Ores and Cobblemon.
+    # ONE FAMILY PER DIMENSION, deliberately. Each gem has overworld, netherrack and end stone
+    # forms, and a family is one sprite, so keeping them apart is what stops an End ore bordering
+    # into an overworld one. They share the same artwork; only the sprite differs.
+    "sg": ("silent gems", "silentgems", {
+        **{g: (g, [f"{g}_ore", f"deepslate_{g}_ore"]) for g in _SG_GEMS},
+        **{f"nether_{g}": (g, [f"nether_{g}_ore"]) for g in _SG_GEMS},
+        **{f"end_{g}": (g, [f"end_{g}_ore"]) for g in _SG_GEMS},
+        "chaos":  ("chaos",  ["chaos_ore", "deepslate_chaos_ore"]),
+        "silver": ("silver", ["silver_ore", "deepslate_silver_ore"]),
+    }),
+    # Mekanism and Dense Mekanism keep their own art but SHARE a connection list per ore, so a dense
+    # vein reads as part of the same deposit rather than a separate ore. See connection_targets.
+    "mek": ("mekanism", "mekanism", {
+        o: (o, [f"{o}_ore", f"deepslate_{o}_ore"])
+        for o in ("fluorite", "lead", "osmium", "tin", "uranium")}),
+    # Dense Mekanism names its blocks dense_<ore>_ore and dense_deepslate_<ore>_ore.
+    "dmek": ("dense mekanism", "densemekanism", {
+        o: (f"dense_{o}", [f"dense_{o}_ore", f"dense_deepslate_{o}_ore"])
+        for o in ("fluorite", "lead", "osmium", "tin", "uranium")}),
+    # Create: The Factory Must Grow. Its bauxite, galena, lignite and fireclay are NOT ores, they are
+    # striated deposit blocks placed by create:layered_ore, so they are excluded by design.
+    "tfmg": ("create the factory must grow", "tfmg", {
+        o: (o, [f"{o}_ore", f"deepslate_{o}_ore"]) for o in ("lead", "lithium", "nickel")}),
+    "sgear": ("silent gear", "silentgear", {
+        "bort":         ("bort", ["bort_ore", "deepslate_bort_ore"]),
+        "crimson_iron": ("crimson_iron", ["crimson_iron_ore", "blackstone_crimson_iron_ore"]),
+        "azure_silver": ("azure_silver", ["azure_silver_ore"]),
+    }),
+    # Powah's art filenames are irregular, so these carry an explicit (overlay, border) pair rather
+    # than a stem: the poor and dense files are uraninite_overlay_poor.png and
+    # uraninite_overlay_poor_border.png, not uraninite_poor_overlay.png.
+    "powah": ("powah", "powah", {
+        "uraninite":       (("uraninite_overlay", "uraninite_border"),
+                            ["uraninite_ore", "deepslate_uraninite_ore"]),
+        "uraninite_poor":  (("uraninite_overlay_poor", "uraninite_overlay_poor_border"),
+                            ["uraninite_ore_poor", "deepslate_uraninite_ore_poor"]),
+        "uraninite_dense": (("uraninite_overlay_dense", "uraninite_overlay_dense_border"),
+                            ["uraninite_ore_dense", "deepslate_uraninite_ore_dense"]),
+    }),
+    # Ice and Fire's sapphire has no deepslate form: its feature targets stone_ore_replaceables only.
+    "iaf": ("ice and fire", "iceandfire", {
+        "silver":   ("silver", ["silver_ore", "deepslate_silver_ore"]),
+        "sapphire": ("sapphire", ["sapphire_ore"]),
+    }),
+    "expores": ("exp ores", "expores", {
+        "experience":        ("experience", ["experience_ore", "deepslate_experience_ore"]),
+        "nether_experience": ("experience", ["nether_experience_ore"]),
+        "end_experience":    ("experience", ["end_experience_ore"]),
+    }),
+    "things": ("things", "things", {
+        "gleaming": ("gleaming", ["gleaming_ore", "deepslate_gleaming_ore"])}),
+    "ep": ("energized power", "energizedpower", {
+        "tin": ("tin", ["tin_ore", "deepslate_tin_ore"])}),
+    # GALOSPHERE IS DELIBERATELY ABSENT. See EXCLUDED_NAMESPACES below.
+    # Create: New Age targets stone_ore_replaceables only, so thorium has no deepslate form.
+    # magnetite_block is excluded: it is a whole block deposit at 15 veins per chunk, far too common
+    # to glow whole, unlike ancient debris at one buried vein per chunk.
+    "cna": ("create new age", "create_new_age", {
+        "thorium": ("thorium", ["thorium_ore"])}),
+}
+
+# Families that keep their own artwork but share one connection list. Keyed by family, valued by
+# group name; every family naming the same group borders as one body.
+CONNECTION_GROUPS = {}
+for _o in ("fluorite", "lead", "osmium", "tin", "uranium"):
+    CONNECTION_GROUPS[f"mek_{_o}"] = f"mekanism_{_o}"
+    CONNECTION_GROUPS[f"dmek_{_o}"] = f"mekanism_{_o}"
+for _u in ("powah_uraninite", "powah_uraninite_poor", "powah_uraninite_dense"):
+    CONNECTION_GROUPS[_u] = "powah_uraninite"
+
+# WHAT SEAMLESS ORES CALLS THE SAME ORE.
+#
+# The mod names its variants <host>_<ore>_ore, and that <ore> is NOT the family key here. Keys are
+# prefixed by mod so two mods' identically named ores stay apart (mek_lead vs tfmg_lead), and the
+# MOD prefixes an ore of its own whenever the plain name is already taken by another supported mod,
+# which is where silents_silver and energized_tin come from.
+#
+# A family with no entry here covers the source mod's blocks and NONE of ours. That is silent: the
+# pack builds, the source mod's ore glows, and our variant of the same ore does not. Everything the
+# mod actually ships a variant for therefore needs a line, and `--list` is the check.
+_SG_SO_NAME = {"aquamarine": "silents_aquamarine", "citrine": "silents_citrine",
+               "peridot": "silents_peridot", "topaz": "silents_topaz", "silver": "silents_silver"}
+# Ruby and sapphire are deliberately absent. The mod gives Silent's Gems' overworld ruby and Mythic
+# Upgrades' netherrack ruby ONE block name and ONE overlay, so those variants belong to the Mythic
+# Upgrades families above; claiming them here too would give the same block two families.
+SO_SUFFIX = {}
+SO_HOSTS = {}
+for _g in _SG_GEMS:
+    if _g in ("ruby", "sapphire"):
+        continue
+    SO_SUFFIX[f"sg_{_g}"] = _SG_SO_NAME.get(_g, _g)
+    SO_HOSTS[f"sg_{_g}"] = "overworld"
+    # Only eight of the gems have a netherrack form the mod restyles; the rest simply find nothing.
+    SO_SUFFIX[f"sg_nether_{_g}"] = _SG_SO_NAME.get(_g, _g)
+    SO_HOSTS[f"sg_nether_{_g}"] = "nether"
+for _o in ("fluorite", "lead", "osmium", "tin", "uranium"):
+    SO_SUFFIX[f"dmek_{_o}"] = f"dense_{_o}"          # densemekanism:dense_<ore>_ore
+for _o in ("lead", "lithium", "nickel"):
+    SO_SUFFIX[f"tfmg_{_o}"] = _o
+SO_SUFFIX.update({
+    # Chaos and silver are Silent's Gems entries outside the gem list above, so they need their own
+    # lines. Silver is one of the names the mod prefixes, because Mythic Metals has a silver too.
+    "sg_chaos": "chaos",
+    "sg_silver": "silents_silver",
+    "sgear_bort": "bort",
+    "powah_uraninite": "uraninite",
+    "powah_uraninite_poor": "uraninite_poor",
+    "powah_uraninite_dense": "uraninite_dense",
+    "iaf_silver": "iceandfire_silver",               # prefixed: Silent's Gems has a silver too
+    "iaf_sapphire": "iceandfire_sapphire",
+    "expores_experience": "experience",
+    "expores_nether_experience": "experience",
+    "things_gleaming": "gleaming",
+    "ep_tin": "energized_tin",                       # prefixed: Mythic Metals has a tin
+    "cna_thorium": "thorium",
+})
+SO_HOSTS.update({"expores_experience": "overworld", "expores_nether_experience": "nether"})
+# Mekanism itself is not supported by the mod (its ore feature is a custom type the mod's injector
+# cannot rebind), so the mek_* families stay source-mod only and take no suffix.
+
+for _prefix, (_art, _ns, _ores) in THIRD_PARTY.items():
+    for _base, (_stem, _blocks) in _ores.items():
+        # A stem is the usual <stem>_overlay.png / <stem>_border.png pair; a 2-tuple names both
+        # files outright, for art that does not follow that convention.
+        _ovl, _bdr = _stem if isinstance(_stem, tuple) else (f"{_stem}_overlay", f"{_stem}_border")
+        _key = f"{_prefix}_{_base}"
+        _spec = dict(art=_art, targets=[f"{_ns}:{b}" for b in _blocks],
+                     overlay_file=_ovl, border_file=_bdr)
+        if _key in CONNECTION_GROUPS:
+            _spec["group"] = CONNECTION_GROUPS[_key]
+        if _key in SO_SUFFIX:
+            _spec["suffix"] = SO_SUFFIX[_key]
+        if _key in SO_HOSTS:
+            _spec["hosts"] = SO_HOSTS[_key]
+        add_family(_key, **_spec)
+
+# MEADOW joins the VANILLA families rather than getting its own art.
+#
+# Meadow overrides vanilla's own ore features and adds limestone as a third host, so alpine_<ore>_ore
+# is a vanilla ore in a modded stone: our exact mechanic, on someone else's rock. Measured against
+# the hand cleaned vanilla overlays, all five land on 100% of Meadow's ore pixels and 0% on bare
+# limestone, so they inherit the vanilla overlay and border for free AND connect to vanilla ores of
+# the same type by construction, because a connecting texture is keyed on the sprite.
+#
+# alpine_salt_ore is NOT here: it has two randomly weighted model variants whose blobs share only
+# 3 pixels of 39 and 27, and Fusion appends per block rather than per model, so one overlay would
+# glow bare limestone on half of them. Deferred pending a look at Fusion's `append_models` key.
+#
+# The full list comes from Meadow's BLOCKSTATES, not from its worldgen: copper, diamond and redstone
+# are placed by a path the configured-feature scan did not see, and were missed on the first build.
+for _ore in ("coal", "copper", "diamond", "emerald", "gold", "iron", "lapis", "redstone"):
+    FAMILIES[_ore]["targets"].append(f"meadow:alpine_{_ore}_ore")
+
 # ANIMATED FAMILIES. Values copied from the SOURCE MOD'S OWN mcmeta so the glow pulses in step with
 # the ore underneath it, rather than being chosen.
 #
@@ -233,6 +426,9 @@ FAMILIES["end_stone_starrite"] = dict(art="mythic metals",
 ANIMATED = {
     "stormyx":     {"frametime": 20},   # 5 frames, matches Mythic Metals' own stormyx_ore
     "unobtainium": {"frametime": 60},   # 4 frames, matches its deepslate ore
+    # Silent Gems' chaos ore is 4 frames at frametime 10 in the mod's own mcmeta. The mod sets
+    # interpolate; we deliberately do not, for the reason above.
+    "sg_chaos":    {"frametime": 10},
 }
 
 
@@ -360,6 +556,30 @@ def mod_block_targets(family):
 
 def family_targets(family):
     return list(FAMILIES[family]["targets"]) + mod_block_targets(family)
+
+
+def connection_targets(family):
+    """
+    The blocks this family's border connects to, which is NOT always its own target list.
+
+    A family may name a `group`, and then every family in that group connects to every other while
+    keeping its own sprite and its own artwork. Fusion declares connection per face from a block
+    list, so both halves simply omit their border on a shared edge and the outline reads as one
+    body across differing art.
+
+    That is what lets a mod's ore tiers read as one deposit: Mekanism's ore beside Dense Mekanism's,
+    and Powah's three uraninite grades, which a player sees as one vein rather than three ores.
+    """
+    group = FAMILIES[family].get("group")
+    if not group:
+        return family_targets(family)
+    blocks = []
+    for other, spec in FAMILIES.items():
+        if spec.get("group") == group:
+            for b in family_targets(other):
+                if b not in blocks:
+                    blocks.append(b)
+    return blocks
 
 
 def mitre_owners(size):
@@ -547,6 +767,49 @@ def warn_if_overlays_drifted():
         print("  !! The glow will not line up with those blocks in game. Sync them before shipping.")
 
 
+# Mods we deliberately do NOT cover, and the reason, so nobody "completes" the set later.
+#
+# Both are ALL RIGHTS RESERVED. Our overlays are hand drawn from the mod's own ore art, which is
+# derived work, and we have no permission. This is the same call already made for Immersive Ores.
+# The bar is permission, not whether anyone would mind: another pack covering Galosphere is not
+# evidence that it is allowed, only that they either asked or did not check.
+#
+# The art stays in assets/ so nothing is lost if permission is ever granted. It is the BUILD that
+# must stay clean, which assert_no_excluded_mods enforces over the finished tree.
+EXCLUDED_NAMESPACES = {
+    "galosphere": "All Rights Reserved, no permission sought",
+    "alltheores": "All Rights Reserved, no permission sought",
+}
+
+
+def assert_no_excluded_mods(out_dir):
+    """
+    Refuse to zip if an excluded mod reached the build, by PATH or by FILE CONTENT.
+
+    Content matters as much as path: a namespace can reach a pack through a model_modifier target
+    list or a connection list without ever appearing in a filename. That is exactly how the
+    Immersive Ores gating had to work on the old build.
+    """
+    hits = []
+    for root, _dirs, files in os.walk(out_dir):
+        for f in files:
+            p = os.path.join(root, f)
+            rel = os.path.relpath(p, out_dir)
+            for ns in EXCLUDED_NAMESPACES:
+                if ns in rel.lower():
+                    hits.append(f"{rel} (path)")
+                    continue
+                if f.endswith((".json", ".mcmeta", ".txt", ".md")):
+                    try:
+                        with io.open(p, encoding="utf-8") as fh:
+                            if ns in fh.read().lower():
+                                hits.append(f"{rel} (contents: {ns})")
+                    except (OSError, UnicodeDecodeError):
+                        pass
+    if hits:
+        sys.exit("Excluded mod reached the build, refusing to zip:\n  " + "\n  ".join(sorted(hits)))
+
+
 def assert_owns_only_its_namespace(out_dir):
     """
     Refuse to zip if the pack writes into anyone else's namespace.
@@ -700,7 +963,8 @@ def build(variant, spec):
                 # was ignored WITHOUT ANY WARNING and connection fell back to the default
                 # is_same_block - i.e. each host stone's variant bordered only against itself.
                 "connections": [
-                    {"type": "match_block", "blocks": targets, "ignore_missing": True},
+                    {"type": "match_block", "blocks": connection_targets(family),
+                     "ignore_missing": True},
                 ],
             }
             check_fusion_keys(meta)
@@ -744,6 +1008,7 @@ def build(variant, spec):
     built += build_whole_block_glow(out_dir, tex_dir)
 
     assert_owns_only_its_namespace(out_dir)
+    assert_no_excluded_mods(out_dir)
 
     zip_path = os.path.join(root(), "build", f"SeamlessGlowingOres-{variant.capitalize()}.zip")
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as archive:

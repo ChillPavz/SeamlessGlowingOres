@@ -27,8 +27,19 @@ Pillow is required and lives on the 3.14 install. Output:
 | `build/SeamlessGlowingOres-Glow.zip` | Emissive only |
 | `build/SeamlessGlowingOres-Border.zip` | Emissive plus the 47 tile connected outline |
 
-45 families covering 135 blocks: vanilla, Seamless Ores, Create zinc, Mythic Upgrades, Mythic
-Metals, plus ancient debris as a whole block glow.
+134 families covering 520 blocks: vanilla, every Seamless Ores variant, and the ores of Create,
+Create: New Age, Create: TFMG, Dense Mekanism, Energized Power, Exp Ores, Ice and Fire, Mekanism,
+Mythic Metals, Mythic Upgrades, Powah, Silent Gear and Silent's Gems, plus ancient debris as a whole
+block glow. Run `--list` for the breakdown; the numbers here come from it.
+
+**A family covers the source mod's ore AND Seamless Ores' variants of it, and those two are matched
+differently.** The source mod's blocks are listed outright; ours are discovered from the mod's own
+blockstates across every branch folder. The mod names a variant `<host>_<ore>_ore`, and that `<ore>`
+is not the family key: keys are prefixed per mod so `mek_lead` and `tfmg_lead` stay apart, and the
+mod itself prefixes an ore whose plain name another supported mod already took, which is where
+`silents_silver` and `energized_tin` come from. `SO_SUFFIX` maps the two together. **A family missing
+from that map silently covers none of our blocks** - the pack still builds and the source mod's ore
+still glows, so `--list` is the only thing that catches it.
 
 Banglum and starrite each spread across several families, because Mythic Metals draws some of their
 hosts differently and a sprite is what a connecting texture is keyed on. Those five are also
