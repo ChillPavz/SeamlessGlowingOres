@@ -12,3 +12,14 @@ __pycache__/
 DESCRIPTION.md
 WIKI.md
 CHANGELOG-*.md
+
+# Working material the generator never reads: other mods' extracted ore and stone textures,
+# scratch scripts, and reference copies of vanilla textures. Only the whole-block art it
+# does read is tracked.
+assets/ore/
+assets/stone/
+assets/scripts/
+assets/overlays/cobblemon new/
+assets/whole_block/*
+!assets/whole_block/ancient_debris_side.png
+!assets/whole_block/ancient_debris_top.png

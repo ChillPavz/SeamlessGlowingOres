@@ -245,9 +245,8 @@ _SG_GEMS = ["alexandrite", "ammolite", "aquamarine", "black_diamond", "carnelian
             "rose_quartz", "ruby", "sapphire", "tanzanite", "topaz", "turquoise", "white_diamond"]
 
 THIRD_PARTY = {
-    # Silent Gems: every gem has stone, deepslate AND netherrack forms. Opal is deliberately absent:
-    # it is alpha blended, so it absorbs the colour of the rock behind it and one overlay cannot
-    # serve all four hosts. Deferred with All the Ores and Cobblemon.
+    # Silent Gems: every gem has stone, deepslate AND netherrack forms. Opal is added below this
+    # table: it is translucent, so it uses one solved layer and renders translucent.
     # ONE FAMILY PER DIMENSION, deliberately. Each gem has overworld, netherrack and end stone
     # forms, and a family is one sprite, so keeping them apart is what stops an End ore bordering
     # into an overworld one. They share the same artwork; only the sprite differs.
@@ -307,7 +306,70 @@ THIRD_PARTY = {
     # to glow whole, unlike ancient debris at one buried vein per chunk.
     "cna": ("create new age", "create_new_age", {
         "thorium": ("thorium", ["thorium_ore"])}),
+    # Tech Reborn (Fabric only; MIT). Overworld ores have stone and deepslate forms; cinnabar, pyrite
+    # and sphalerite are netherrack only; peridot, sheldonite, sodalite and tungsten are end stone
+    # only (their deepslate blocks exist at 26.x but nothing places them, so they are left out).
+    # Uranium exists from 26.x only; at older versions the target simply does not resolve.
+    "tr": ("tech reborn", "techreborn", {
+        **{o: (o, [f"{o}_ore", f"deepslate_{o}_ore"])
+           for o in ("bauxite", "galena", "iridium", "lead", "ruby", "sapphire", "silver", "tin", "uranium")},
+        **{o: (o, [f"{o}_ore"]) for o in ("cinnabar", "pyrite", "sphalerite")},
+        # The End ores. Their deepslate forms (26.x only) generate nowhere, but a player can still
+        # hold one, and the end-stone overlay lands exactly on their specks (measured Sept 2026).
+        # Deepslate is an OVERWORLD rock, so those are their own families on the same art: one
+        # family per dimension, and variants in different dimensions never connect.
+        **{o: (o, [f"{o}_ore"]) for o in ("peridot", "sheldonite", "sodalite", "tungsten")},
+        **{f"deepslate_{o}": (o, [f"deepslate_{o}_ore"]) for o in ("peridot", "sheldonite", "sodalite", "tungsten")},
+    }),
+    # Modern Industrialization (MIT). Platinum, quartz and titanium ores exist but nothing places
+    # them; they still glow if a player has one. Iridium GENERATES at 1.20.1 on both tiers (our
+    # variant there is mi_iridium) and from 1.21.1 exists as the stone ore only, placed by nothing.
+    "mi": ("modern industrialization", "modern_industrialization", {
+        **{o: (o, [f"{o}_ore", f"deepslate_{o}_ore"])
+           for o in ("antimony", "bauxite", "iridium", "lead", "lignite_coal", "monazite", "nickel", "salt",
+                     "tin", "tungsten", "uranium")},
+        **{o: (o, [f"{o}_ore"]) for o in ("platinum", "quartz", "titanium")},
+    }),
+    # Occultism (MIT). Its tier word comes LAST. Iesnium is a separate family below, because its
+    # natural ore is hidden and must only glow when uncovered.
+    "occ": ("occultism", "occultism", {
+        "silver": ("silver", ["silver_ore", "silver_ore_deepslate"])}),
+    # Extreme Reactors (MIT). All three animate, each with its own frame list (see ANIMATED).
+    "er": ("extreme reactors", "bigreactors", {
+        "yellorite": ("yellorite", ["yellorite_ore", "deepslate_yellorite_ore"]),
+        "anglesite": ("anglesite", ["anglesite_ore"]),
+        "benitoite": ("benitoite", ["benitoite_ore"]),
+    }),
+    # Mystical Agriculture (MIT). Its own models are already two-layer; the glow appends on top.
+    "ma": ("mystical agriculture", "mysticalagriculture", {
+        "inferium":   ("inferium", ["inferium_ore", "deepslate_inferium_ore"]),
+        "prosperity": ("prosperity", ["prosperity_ore", "deepslate_prosperity_ore"]),
+        "soulium":    ("soulium", ["soulium_ore"]),
+    }),
+    # Cobblemon (MPL-2.0). ONE universal overlay per evolution stone serves every rock it sits on,
+    # including Cobblemon's own dripstone moon stone and terracotta sun stone. The art is the SOLVED
+    # set: Cobblemon's translucent edge ring with the translucency removed (the mod instead draws
+    # per-host precomposited overlays, so the two differ by design). The nether fire stone is its own
+    # family (one family per dimension, as with Silent's Gems) sharing the same art.
+    "cb": ("cobblemon", "cobblemon", {
+        **{f"{o}_stone": ((f"solved/{o}_stone_overlay", f"{o}_stone_border"),
+                          [f"{o}_stone_ore", f"deepslate_{o}_stone_ore"]
+                          + ([f"dripstone_{o}_stone_ore"] if o == "moon" else [])
+                          + ([f"terracotta_{o}_stone_ore"] if o == "sun" else []))
+           for o in ("dawn", "dusk", "fire", "ice", "leaf", "moon", "shiny", "sun", "thunder", "water")},
+        "nether_fire_stone": (("solved/fire_stone_overlay", "fire_stone_border"), ["nether_fire_stone_ore"]),
+    }),
 }
+
+# Silent's Gems' opal. Owner's call: EVERY opal glow uses the one solved translucent layer, whatever
+# rock the block sits on (the mod's own four and our four). It keeps its partial opacity, so these
+# families render TRANSLUCENT rather than cutout. One family per dimension, like every other gem.
+_OPAL_ART = ("opal_extracted/opal_translucent_layer", "opal_border")
+THIRD_PARTY["sg"][2].update({
+    "opal":        (_OPAL_ART, ["opal_ore", "deepslate_opal_ore"]),
+    "nether_opal": (_OPAL_ART, ["nether_opal_ore"]),
+    "end_opal":    (_OPAL_ART, ["end_opal_ore"]),
+})
 
 # Families that keep their own artwork but share one connection list. Keyed by family, valued by
 # group name; every family naming the same group borders as one body.
@@ -330,13 +392,17 @@ for _u in ("powah_uraninite", "powah_uraninite_poor", "powah_uraninite_dense"):
 # mod actually ships a variant for therefore needs a line, and `--list` is the check.
 _SG_SO_NAME = {"aquamarine": "silents_aquamarine", "citrine": "silents_citrine",
                "peridot": "silents_peridot", "topaz": "silents_topaz", "silver": "silents_silver"}
-# Ruby and sapphire are deliberately absent. The mod gives Silent's Gems' overworld ruby and Mythic
-# Upgrades' netherrack ruby ONE block name and ONE overlay, so those variants belong to the Mythic
-# Upgrades families above; claiming them here too would give the same block two families.
+# Ruby and sapphire: the mod gives Silent's Gems' overworld ruby and Mythic Upgrades' netherrack ruby
+# ONE block name, but (fixed Sept 2026) their OWN art: the mod's Silent's Gems entries now use the
+# overlay key silents_ruby / silents_sapphire. So each family claims its own hosts: Silent's Gems the
+# overworld variants, Mythic Upgrades the nether ones (see the `hosts` set further down). Silent's Gems'
+# nether ruby and sapphire have no variants in the mod, so sg_nether_ruby/sapphire take no suffix.
 SO_SUFFIX = {}
 SO_HOSTS = {}
 for _g in _SG_GEMS:
     if _g in ("ruby", "sapphire"):
+        SO_SUFFIX[f"sg_{_g}"] = _g
+        SO_HOSTS[f"sg_{_g}"] = "overworld"
         continue
     SO_SUFFIX[f"sg_{_g}"] = _SG_SO_NAME.get(_g, _g)
     SO_HOSTS[f"sg_{_g}"] = "overworld"
@@ -363,7 +429,28 @@ SO_SUFFIX.update({
     "things_gleaming": "gleaming",
     "ep_tin": "energized_tin",                       # prefixed: Mythic Metals has a tin
     "cna_thorium": "thorium",
+    # Sept 2026 wave. Prefixed where the mod prefixes (a clash with another supported mod's ore).
+    "tr_bauxite": "techreborn_bauxite", "tr_galena": "galena", "tr_iridium": "iridium",
+    "tr_lead": "techreborn_lead", "tr_ruby": "techreborn_ruby", "tr_sapphire": "techreborn_sapphire",
+    "tr_silver": "techreborn_silver", "tr_tin": "techreborn_tin",
+    "tr_cinnabar": "cinnabar", "tr_pyrite": "pyrite", "tr_sphalerite": "sphalerite",
+    # Tech Reborn has uranium from 26.x only, prefixed there because the mod's plain "uranium"
+    # variants are Modern Industrialization's.
+    "tr_uranium": "techreborn_uranium",
+    "mi_antimony": "antimony", "mi_bauxite": "mi_bauxite", "mi_iridium": "mi_iridium", "mi_lead": "mi_lead",
+    "mi_lignite_coal": "lignite_coal", "mi_monazite": "monazite", "mi_nickel": "mi_nickel",
+    "mi_salt": "salt", "mi_tin": "mi_tin", "mi_tungsten": "tungsten", "mi_uranium": "uranium",
+    "occ_silver": "occultism_silver",
+    "er_yellorite": "yellorite", "er_benitoite": "benitoite",
+    "ma_inferium": "inferium", "ma_prosperity": "prosperity",
+    "sg_opal": "opal",
+    **{f"cb_{o}_stone": f"{o}_stone" for o in ("dawn", "dusk", "fire", "ice", "leaf", "moon", "shiny",
+                                              "sun", "thunder", "water")},
+    "cb_nether_fire_stone": "fire_stone",
 })
+SO_HOSTS.update({"cb_fire_stone": "overworld", "cb_nether_fire_stone": "nether",
+                 "tr_cinnabar": "nether", "tr_pyrite": "nether", "tr_sphalerite": "nether",
+                 "er_benitoite": "nether", "sg_opal": "overworld"})
 SO_HOSTS.update({"expores_experience": "overworld", "expores_nether_experience": "nether"})
 # Mekanism itself is not supported by the mod (its ore feature is a custom type the mod's injector
 # cannot rebind), so the mek_* families stay source-mod only and take no suffix.
@@ -384,6 +471,32 @@ for _prefix, (_art, _ns, _ores) in THIRD_PARTY.items():
             _spec["hosts"] = SO_HOSTS[_key]
         add_family(_key, **_spec)
 
+# Ruby and sapphire: Mythic Upgrades' families keep only the NETHER variants (the overworld ones are
+# Silent's Gems', above), and Silent's Gems' families name the mod's overlay key so the drift check
+# compares the right pair of files.
+for _gem in ("ruby", "sapphire"):
+    FAMILIES[_gem]["hosts"] = "nether"
+    FAMILIES[f"sg_{_gem}"]["overlay"] = f"silents_{_gem}"
+
+for _opal in ("sg_opal", "sg_nether_opal", "sg_end_opal"):
+    FAMILIES[_opal]["render_type"] = "translucent"
+
+# OCCULTISM'S IESNIUM IS A HIDDEN ORE. iesnium_ore_natural renders plain NETHERRACK while
+# uncovered=false and only shows its texture at uncovered=true (Occultism's Third Eye). Glowing the
+# covered state would reveal every hidden ore, so the natural block is targeted by STATE, and its
+# border connects only to uncovered neighbours for the same reason. iesnium_ore is the ordinary
+# block form, which always shows the texture. Seamless Ores ships no iesnium variants.
+add_family("occ_iesnium", art="occultism", overlay_file="iesnium_overlay", border_file="iesnium_border",
+           targets=["occultism:iesnium_ore",
+                    {"block": "occultism:iesnium_ore_natural", "properties": {"uncovered": "true"}}])
+
+# MEADOW'S ALPINE SALT: BORDER ONLY, no glow. Its salt is Meadow's own art (resources are All Rights
+# Reserved) and its two random texture variants cannot be followed by a per-block glow anyway. An
+# outline needs neither: it is our own art and does not depend on where the salt sits. The glow
+# waits on the author's answer. Glow variant: nothing. Border variant: the outline alone.
+add_family("meadow_alpine_salt", art="meadow", border_file="alpine_salt_border", border_only=True,
+           targets=["meadow:alpine_salt_ore"])
+
 # MEADOW joins the VANILLA families rather than getting its own art.
 #
 # Meadow overrides vanilla's own ore features and adds limestone as a third host, so alpine_<ore>_ore
@@ -393,8 +506,9 @@ for _prefix, (_art, _ns, _ores) in THIRD_PARTY.items():
 # the same type by construction, because a connecting texture is keyed on the sprite.
 #
 # alpine_salt_ore is NOT here: it has two randomly weighted model variants whose blobs share only
-# 3 pixels of 39 and 27, and Fusion appends per block rather than per model, so one overlay would
-# glow bare limestone on half of them. Deferred pending a look at Fusion's `append_models` key.
+# 3 pixels of 39 and 27, and Fusion appends per block rather than per model (checked in its source:
+# no predicate or random texture can follow a weighted variant), so one overlay would glow bare
+# limestone on half of them. It gets a border-only family above until its author answers.
 #
 # The full list comes from Meadow's BLOCKSTATES, not from its worldgen: copper, diamond and redstone
 # are placed by a path the configured-feature scan did not see, and were missed on the first build.
@@ -430,6 +544,14 @@ ANIMATED = {
     # interpolate; we deliberately do not, for the reason above.
     "sg_chaos":    {"frametime": 10},
 }
+# Extreme Reactors plays a custom frame ORDER (a pulse, then a long rest), so frametime alone would be
+# wrong. The owner's overlays carry the mod's own mcmeta beside them; read it rather than retype it.
+for _er in ("yellorite", "anglesite", "benitoite"):
+    _meta = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                         "assets", "overlays", "extreme reactors", f"{_er}_overlay.png.mcmeta")
+    with open(_meta, encoding="utf-8") as _handle:
+        ANIMATED[f"er_{_er}"] = {k: v for k, v in json.load(_handle)["animation"].items()
+                                 if k in ("frametime", "frames")}
 
 
 def frame_count(image):
@@ -556,6 +678,25 @@ def mod_block_targets(family):
 
 def family_targets(family):
     return list(FAMILIES[family]["targets"]) + mod_block_targets(family)
+
+
+def target_block(target):
+    """The block id of a target, which is either a plain id or a Fusion {block, properties} object."""
+    return target["block"] if isinstance(target, dict) else target
+
+
+def connection_predicates(family):
+    """Fusion `connections` for a family. Plain ids share one match_block; a state-filtered target
+    becomes a match_state with the same properties, so a border never connects into a state the
+    glow deliberately skips (iesnium's covered, netherrack-looking form)."""
+    targets = connection_targets(family)
+    plain = [t for t in targets if not isinstance(t, dict)]
+    preds = [{"type": "match_block", "blocks": plain, "ignore_missing": True}] if plain else []
+    for t in targets:
+        if isinstance(t, dict):
+            preds.append({"type": "match_state", "block": t["block"], "properties": t["properties"],
+                          "ignore_missing": True})
+    return preds
 
 
 def connection_targets(family):
@@ -698,7 +839,8 @@ FUSION_TEXTURE_KEYS = {"emissive", "render_type", "type", "layout", "connections
 FUSION_PREDICATE_TYPES = {"match_block", "match_state", "is_same_block", "is_same_state",
                           "is_direction", "is_face_visible", "match_block_in_front",
                           "match_state_in_front", "and", "or", "not", "always", "never"}
-FUSION_PREDICATE_KEYS = {"type", "block", "blocks", "ignore_missing", "predicates", "directions"}
+FUSION_PREDICATE_KEYS = {"type", "block", "blocks", "ignore_missing", "predicates", "directions",
+                         "properties"}   # match_state; verified in MatchStateConnectionPredicate
 
 # Top-level keys of a `fusion/model_modifiers/blocks/<name>.json`, recovered by disassembling
 # BlockModelModifierReloadListener.parseResource and listing every key it queries with has().
@@ -732,6 +874,17 @@ def check_fusion_keys(meta):
             sys.exit(f"Unknown connection-predicate type {predicate.get('type')!r}")
 
 
+# Families whose pack overlay DELIBERATELY differs from the mod's copy, so the drift check skips them.
+DRIFT_BY_DESIGN = {
+    # Owner's decision: unobtainium is a STILL image in the mod, and animates only with this pack.
+    "unobtainium": "still in the mod, animated in the pack",
+    # Cobblemon: the mod draws per-host precomposited overlays, the pack one solved universal each.
+    **{f"cb_{_o}_stone": "per-host in the mod, solved universal in the pack"
+       for _o in ("dawn", "dusk", "fire", "ice", "leaf", "moon", "shiny", "sun", "thunder", "water")},
+    "cb_nether_fire_stone": "per-host in the mod, solved universal in the pack",
+}
+
+
 def warn_if_overlays_drifted():
     """
     Warn when a family's overlay here differs from the MOD's copy of the same file.
@@ -748,20 +901,27 @@ def warn_if_overlays_drifted():
         return
     drifted = []
     for family in FAMILIES:
+        if family in DRIFT_BY_DESIGN:
+            continue
         ours = art_path(family, "overlays")
         if not os.path.exists(ours):
             continue
         name = f"{FAMILIES[family].get('overlay', family)}_overlay.png"
         # Compare against every branch that has the file; they should all agree, and a mismatch on
-        # any of them is worth surfacing.
+        # any of them is worth surfacing. Named by the branch's own folder, which is the first path
+        # part below the parent (walking a fixed number of levels up landed on "src/main").
+        parent = os.path.normpath(os.path.join(root(), ".."))
+        branches = []
         for mod_textures in dirs:
             theirs = os.path.join(mod_textures, name)
             if not os.path.exists(theirs):
                 continue
             with open(ours, "rb") as a, open(theirs, "rb") as b:
                 if a.read() != b.read():
-                    drifted.append(f"{family} ({os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(mod_textures))))))})")
-                    break
+                    branch = os.path.relpath(mod_textures, parent).split(os.sep)[0]
+                    branches.append(branch.removeprefix("seamlessores-").removesuffix("-multiloader"))
+        if branches:
+            drifted.append(f"{family} ({', '.join(branches)})")
     if drifted:
         print(f"  !! OVERLAY DRIFT: {', '.join(drifted)} differ from the mod's copy.")
         print("  !! The glow will not line up with those blocks in game. Sync them before shipping.")
@@ -900,14 +1060,18 @@ def build(variant, spec):
         if not targets:
             print(f"  !! {family}: no targets - skipped")
             continue
-        for kind in ("overlays", "borders"):
+        border_only = FAMILIES[family].get("border_only", False)
+        if border_only and not bordered:
+            continue    # nothing to glow: a border-only family exists only in the Border variant
+        for kind in (("borders",) if border_only else ("overlays", "borders")):
             if not os.path.exists(art_path(family, kind)):
                 sys.exit(f"Missing art: {art_path(family, kind)}")
+        render_type = FAMILIES[family].get("render_type", "cutout")
 
         from PIL import Image
         animation = ANIMATED.get(family)
-        overlay_art = Image.open(art_path(family, "overlays")).convert("RGBA")
-        frames = frame_count(overlay_art)
+        overlay_art = None if border_only else Image.open(art_path(family, "overlays")).convert("RGBA")
+        frames = 1 if border_only else frame_count(overlay_art)
         if animation and frames == 1:
             sys.exit(f"{family} is declared in ANIMATED but its overlay is a single frame")
         if frames > 1 and not animation:
@@ -916,17 +1080,17 @@ def build(variant, spec):
 
         # An animated family splits into two appended layers; everything else keeps the single
         # composited sheet that is already proven in game.
-        split = bordered and animation is not None
+        split = bordered and (animation is not None or border_only)
         appended = []
 
         # --- layer 1: the ore glow -----------------------------------------------------------
         # Plain (non-connecting) for the Glow variant and for any animated Border family, because
         # only a plain sprite can animate. A non-animated Border family folds this layer into the
         # sheet below instead, exactly as before.
-        if not bordered or split:
+        if (not bordered or split) and not border_only:
             texture = f"{family}_overlay"
             shutil.copyfile(art_path(family, "overlays"), os.path.join(tex_dir, f"{texture}.png"))
-            meta = {"emissive": True, "render_type": "cutout"}
+            meta = {"emissive": True, "render_type": render_type}
             check_fusion_keys(meta)
             payload = {"fusion": meta}
             if animation:
@@ -949,7 +1113,7 @@ def build(variant, spec):
             build_sheet(family, spec, ore_layer=not split).save(os.path.join(tex_dir, f"{texture}.png"))
             meta = {
                 "emissive": True,
-                "render_type": "cutout",
+                "render_type": render_type,
                 "type": "connecting",
                 "layout": "full",
                 # Connect to every block in the family, so a granite iron ore borders seamlessly
@@ -962,10 +1126,7 @@ def build(variant, spec):
                 # build used "connection" (singular), which is simply not a key Fusion reads, so it
                 # was ignored WITHOUT ANY WARNING and connection fell back to the default
                 # is_same_block - i.e. each host stone's variant bordered only against itself.
-                "connections": [
-                    {"type": "match_block", "blocks": connection_targets(family),
-                     "ignore_missing": True},
-                ],
+                "connections": connection_predicates(family),
             }
             check_fusion_keys(meta)
             write_json(os.path.join(tex_dir, f"{texture}.png.mcmeta"), {"fusion": meta})
@@ -1026,12 +1187,19 @@ def main():
     args = parser.parse_args()
 
     if args.list:
+        def label(target):
+            # A state-filtered target is a dict; show it the way a blockstate reads.
+            if isinstance(target, str):
+                return target
+            props = ",".join(f"{k}={v}" for k, v in target["properties"].items())
+            return f"{target['block']}[{props}]"
+
         total = 0
         for family in FAMILIES:
             targets = family_targets(family)
             total += len(targets)
             print(f"  {family:<12} ({FAMILIES[family]['art']:<15}) {len(targets):2d}  "
-                  f"{', '.join(targets)}")
+                  f"{', '.join(label(t) for t in targets)}")
         for name, spec in WHOLE_BLOCK_GLOW.items():
             total += len(spec["targets"])
             print(f"  {name:<12} ({'whole block':<15}) {len(spec['targets']):2d}  "
