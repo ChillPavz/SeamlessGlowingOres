@@ -81,6 +81,26 @@ PACK_NAMESPACE = "seamlessglowingores"
 # less than 15"). The pack still loads there.
 PACK_FORMAT = 15
 
+# Art that changed under the same block ids, served by version from one file. Mekanism redrew its tin
+# ore between its 1.20.1 build and the next one (1.20.4; it has none for 1.20.2 or 1.20.3), and Dense
+# Mekanism's 1.20.1 tin is the old drawing too. So the pack root carries the OLD art, which is all
+# 1.20.1 can read, and a pack overlay swaps the current art in from 1.20.2 up: resource pack format 18
+# is the first that reads the `overlays` section, and 1.20.1 ignores that section entirely.
+#
+# The overlay entry carries both range spellings for the same reason the pack section does: 1.20.2 to
+# 1.21.x read `formats`, and 1.21.11+ read `min_format` / `max_format` and validate them like the
+# pack's own range. Only textures differ between the eras, so the overlay replaces files and never
+# adds one; build() refuses to zip if it would.
+LEGACY_ART = {
+    # family: (old overlay file, old border file), both in the family's own art folder
+    "mek_tin": ("old_tin_overlay", "old_tin_border"),
+    "dmek_tin": ("old_dense_tin_overlay", "old_dense_tin_border"),
+}
+CURRENT_ART_DIR = "current_art"
+CURRENT_ART_FORMATS = (18, 999)
+# Seamless Ores branches whose copy of a LEGACY_ART overlay is the old drawing (the drift check).
+LEGACY_BRANCHES = {"1.20.1"}
+
 MC_JAR = os.path.expanduser("~/.gradle/caches/neoformruntime/artifacts/minecraft_26.2_client.jar")
 
 # Ore families. `art` is the subfolder under assets/{overlays,borders}/ holding
@@ -471,6 +491,11 @@ for _prefix, (_art, _ns, _ores) in THIRD_PARTY.items():
             _spec["hosts"] = SO_HOSTS[_key]
         add_family(_key, **_spec)
 
+# The mod's own overlay for a Dense Mekanism ore is dense_<ore>_overlay.png, which is not the family
+# key, so the drift check needs the name spelled out. Without it these were never compared at all.
+for _o in ("fluorite", "lead", "osmium", "tin", "uranium"):
+    FAMILIES[f"dmek_{_o}"]["overlay"] = f"dense_{_o}"
+
 # Ruby and sapphire: Mythic Upgrades' families keep only the NETHER variants (the overworld ones are
 # Silent's Gems', above), and Silent's Gems' families name the mod's overlay key so the drift check
 # compares the right pair of files.
@@ -587,15 +612,18 @@ def root():
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def art_path(family, kind):
+def art_path(family, kind, legacy=False):
     """
     kind is 'overlays' or 'borders'; both are laid out as assets/<kind>/<mod>/<family>_<x>.png.
 
     A family may override either with `overlay_file` / `border_file`, which is how a split family
-    reuses its sibling's art. See the split families above.
+    reuses its sibling's art. See the split families above. legacy=True picks the old drawing of a
+    LEGACY_ART family instead.
     """
     stem = "overlay" if kind == "overlays" else "border"
     name = FAMILIES[family].get(f"{stem}_file", f"{family}_{stem}")
+    if legacy:
+        name = LEGACY_ART[family][0 if kind == "overlays" else 1]
     return os.path.join(root(), "assets", kind, FAMILIES[family]["art"], f"{name}.png")
 
 
@@ -766,7 +794,7 @@ def build_tile(overlay, master, owners, connected_edges, inner_corners):
     return tile
 
 
-def build_sheet(family, spec, ore_layer=True):
+def build_sheet(family, spec, ore_layer=True, legacy=False):
     """The whole 8x6 connecting sheet for one family, as a single image.
 
     With ore_layer=False the tiles carry ONLY the border on a transparent field, which is what an
@@ -774,9 +802,9 @@ def build_sheet(family, spec, ore_layer=True):
     connecting texture cannot animate.
     """
     from PIL import Image
-    master = Image.open(art_path(family, "borders")).convert("RGBA")
+    master = Image.open(art_path(family, "borders", legacy)).convert("RGBA")
     if ore_layer:
-        overlay = Image.open(art_path(family, "overlays")).convert("RGBA")
+        overlay = Image.open(art_path(family, "overlays", legacy)).convert("RGBA")
         if overlay.size != master.size:
             sys.exit(f"{family}: overlay {overlay.size} and border {master.size} must match. "
                      f"An animated overlay must be declared in ANIMATED so its ore layer is split "
@@ -916,10 +944,13 @@ def warn_if_overlays_drifted():
             theirs = os.path.join(mod_textures, name)
             if not os.path.exists(theirs):
                 continue
-            with open(ours, "rb") as a, open(theirs, "rb") as b:
+            branch = os.path.relpath(mod_textures, parent).split(os.sep)[0]
+            branch = branch.removeprefix("seamlessores-").removesuffix("-multiloader")
+            # A LEGACY_ART family's old drawing is the right one on a branch whose mod still has it.
+            expected = art_path(family, "overlays", family in LEGACY_ART and branch in LEGACY_BRANCHES)
+            with open(expected, "rb") as a, open(theirs, "rb") as b:
                 if a.read() != b.read():
-                    branch = os.path.relpath(mod_textures, parent).split(os.sep)[0]
-                    branches.append(branch.removeprefix("seamlessores-").removesuffix("-multiloader"))
+                    branches.append(branch)
         if branches:
             drifted.append(f"{family} ({', '.join(branches)})")
     if drifted:
@@ -983,12 +1014,13 @@ def assert_owns_only_its_namespace(out_dir):
     change genuinely needs to retexture something, it should be deliberate enough to edit this.
     """
     intruders = set()
-    assets = os.path.join(out_dir, "assets")
-    if os.path.isdir(assets):
-        intruders = {n for n in os.listdir(assets) if n != PACK_NAMESPACE}
+    for base in ("", CURRENT_ART_DIR):
+        assets = os.path.join(out_dir, base, "assets")
+        if os.path.isdir(assets):
+            intruders |= {f"{base}/assets/{n}".lstrip("/") for n in os.listdir(assets) if n != PACK_NAMESPACE}
     if intruders:
         sys.exit("Pack writes outside its own namespace, refusing to zip: "
-                 + ", ".join(f"assets/{n}/" for n in sorted(intruders))
+                 + ", ".join(f"{n}/" for n in sorted(intruders))
                  + f"\n  (only assets/{PACK_NAMESPACE}/ is allowed - see the namespace note above)")
 
 
@@ -1043,7 +1075,7 @@ def build(variant, spec):
     os.makedirs(tex_dir, exist_ok=True)
 
     bordered = variant == "border"
-    write_json(os.path.join(out_dir, "pack.mcmeta"), {"pack": {
+    mcmeta = {"pack": {
         "description": f"{PACK_NAME} - glowing"
                        + (" and connected" if bordered else "")
                        + " ores. Requires Fusion.",
@@ -1051,7 +1083,15 @@ def build(variant, spec):
         "supported_formats": [15, 999],
         "min_format": 15,
         "max_format": 999,
-    }})
+    }}
+    current_tex_dir = os.path.join(out_dir, CURRENT_ART_DIR, "assets", PACK_NAMESPACE, "textures", "block")
+    if LEGACY_ART:
+        low, high = CURRENT_ART_FORMATS
+        mcmeta["overlays"] = {"entries": [{
+            "formats": [low, high], "min_format": low, "max_format": high, "directory": CURRENT_ART_DIR,
+        }]}
+        os.makedirs(current_tex_dir, exist_ok=True)
+    write_json(os.path.join(out_dir, "pack.mcmeta"), mcmeta)
     build_pack_icon(out_dir)
 
     built = 0
@@ -1083,13 +1123,26 @@ def build(variant, spec):
         split = bordered and (animation is not None or border_only)
         appended = []
 
+        # Where each texture goes, and from which drawing. A LEGACY_ART family writes its old art to
+        # the pack root and its current art to the overlay; models and modifiers exist once, in the
+        # root, because they are the same in both eras.
+        eras = [(tex_dir, False)]
+        if family in LEGACY_ART:
+            if animation or border_only:
+                sys.exit(f"{family}: LEGACY_ART only handles still families with an overlay")
+            for kind in ("overlays", "borders"):
+                if not os.path.exists(art_path(family, kind, legacy=True)):
+                    sys.exit(f"Missing art: {art_path(family, kind, legacy=True)}")
+            eras = [(tex_dir, True), (current_tex_dir, False)]
+
         # --- layer 1: the ore glow -----------------------------------------------------------
         # Plain (non-connecting) for the Glow variant and for any animated Border family, because
         # only a plain sprite can animate. A non-animated Border family folds this layer into the
         # sheet below instead, exactly as before.
         if (not bordered or split) and not border_only:
             texture = f"{family}_overlay"
-            shutil.copyfile(art_path(family, "overlays"), os.path.join(tex_dir, f"{texture}.png"))
+            for era_dir, legacy in eras:
+                shutil.copyfile(art_path(family, "overlays", legacy), os.path.join(era_dir, f"{texture}.png"))
             meta = {"emissive": True, "render_type": render_type}
             check_fusion_keys(meta)
             payload = {"fusion": meta}
@@ -1097,7 +1150,8 @@ def build(variant, spec):
                 # The vanilla animation section sits BESIDE `fusion` at the root; Fusion reads it
                 # through AnimationMetadataSection and keeps the frame list on its own sprite.
                 payload["animation"] = animation
-            write_json(os.path.join(tex_dir, f"{texture}.png.mcmeta"), payload)
+            for era_dir, _legacy in eras:
+                write_json(os.path.join(era_dir, f"{texture}.png.mcmeta"), payload)
             write_json(os.path.join(out_dir, "assets", PACK_NAMESPACE, "models", "block",
                                     f"{texture}.json"), {
                 "loader": "fusion:model",
@@ -1110,7 +1164,9 @@ def build(variant, spec):
         # --- layer 2: the connecting border ---------------------------------------------------
         if bordered:
             texture = f"{family}_border" if split else f"{family}_overlay"
-            build_sheet(family, spec, ore_layer=not split).save(os.path.join(tex_dir, f"{texture}.png"))
+            for era_dir, legacy in eras:
+                build_sheet(family, spec, ore_layer=not split, legacy=legacy).save(
+                    os.path.join(era_dir, f"{texture}.png"))
             meta = {
                 "emissive": True,
                 "render_type": render_type,
@@ -1129,7 +1185,8 @@ def build(variant, spec):
                 "connections": connection_predicates(family),
             }
             check_fusion_keys(meta)
-            write_json(os.path.join(tex_dir, f"{texture}.png.mcmeta"), {"fusion": meta})
+            for era_dir, _legacy in eras:
+                write_json(os.path.join(era_dir, f"{texture}.png.mcmeta"), {"fusion": meta})
             write_json(os.path.join(out_dir, "assets", PACK_NAMESPACE, "models", "block",
                                     f"{texture}.json"), {
                 "loader": "fusion:model",
@@ -1163,6 +1220,8 @@ def build(variant, spec):
         note = "  + 47-tile sheet" if bordered else ""
         if split:
             note = f"  + animated plate ({frames}f) + border sheet"
+        if family in LEGACY_ART:
+            note += f"  (old art in the root, current art in {CURRENT_ART_DIR}/)"
         print(f"  {family:<12} {len(targets):2d} targets{note}")
         built += 1
 
@@ -1170,6 +1229,13 @@ def build(variant, spec):
 
     assert_owns_only_its_namespace(out_dir)
     assert_no_excluded_mods(out_dir)
+    current_root = os.path.join(out_dir, CURRENT_ART_DIR)
+    for folder, _dirs, files in os.walk(current_root):
+        for filename in files:
+            rel = os.path.relpath(os.path.join(folder, filename), current_root)
+            if not os.path.exists(os.path.join(out_dir, rel)):
+                sys.exit(f"{CURRENT_ART_DIR}/{rel} has no counterpart in the pack root, so 1.20.1 "
+                         f"would not have it. The overlay may only replace files, never add them.")
 
     zip_path = os.path.join(root(), "build", f"SeamlessGlowingOres-{variant.capitalize()}.zip")
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as archive:

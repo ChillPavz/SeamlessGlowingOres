@@ -55,6 +55,12 @@ only speaks to 1.20.1 and older, where 88 made the launcher mark the pack incomp
 the floor of our range, and the minimum vanilla permits. 1.17 to 1.19.4 still show the warning and
 cannot be fixed with one file.
 
+One file also serves two drawings of the same ore where a mod redrew it between versions. Mekanism
+and Dense Mekanism draw their tin ore differently on 1.20.1, so `LEGACY_ART` puts the old drawing in
+the pack root, which is all 1.20.1 reads, and the current one in a pack overlay, `current_art/`,
+declared in `pack.mcmeta` for resource pack format 18 (1.20.2) and up. Only textures differ between
+the two, so the overlay replaces files and never adds one, and the build refuses to zip if it would.
+
 ## Layout
 
 | Path | What it holds |
