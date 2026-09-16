@@ -95,6 +95,10 @@ LEGACY_ART = {
     # family: (old overlay file, old border file), both in the family's own art folder
     "mek_tin": ("old_tin_overlay", "old_tin_border"),
     "dmek_tin": ("old_dense_tin_overlay", "old_dense_tin_border"),
+    # Immersive Engineering redrew nickel and uranium after its 1.20.1 build: 1.20.4 and 1.21.1 carry
+    # the new drawing, read from all three jars. The colours moved too, so the borders split as well.
+    "ie_nickel": ("nickel_overlay_old", "nickel_border_old"),
+    "ie_uranium": ("uranium_overlay_old", "uranium_border_old"),
 }
 CURRENT_ART_DIR = "current_art"
 CURRENT_ART_FORMATS = (18, 999)
@@ -360,6 +364,13 @@ THIRD_PARTY = {
         "anglesite": ("anglesite", ["anglesite_ore"]),
         "benitoite": ("benitoite", ["benitoite_ore"]),
     }),
+    # Immersive Engineering (Blu's License of Common Sense). Used with BluSunrize's permission
+    # (14 Sept 2026), on condition of credit wherever credits appear. Block ids read from the 1.20.1
+    # and 1.21.1 jars: ore_<metal> and deepslate_ore_<metal> on both. The art matches 1.21.1; IE
+    # redrew nickel and uranium since 1.20.1. Seamless Ores has no IE variants yet, so no suffix.
+    "ie": ("immersive engineering", "immersiveengineering", {
+        o: (o, [f"ore_{o}", f"deepslate_ore_{o}"])
+        for o in ("aluminum", "lead", "nickel", "silver", "uranium")}),
     # Mystical Agriculture (MIT). Its own models are already two-layer; the glow appends on top.
     "ma": ("mystical agriculture", "mysticalagriculture", {
         "inferium":   ("inferium", ["inferium_ore", "deepslate_inferium_ore"]),
@@ -515,10 +526,10 @@ add_family("occ_iesnium", art="occultism", overlay_file="iesnium_overlay", borde
            targets=["occultism:iesnium_ore",
                     {"block": "occultism:iesnium_ore_natural", "properties": {"uncovered": "true"}}])
 
-# MEADOW'S ALPINE SALT: BORDER ONLY, no glow. Its salt is Meadow's own art (resources are All Rights
-# Reserved) and its two random texture variants cannot be followed by a per-block glow anyway. An
-# outline needs neither: it is our own art and does not depend on where the salt sits. The glow
-# waits on the author's answer. Glow variant: nothing. Border variant: the outline alone.
+# MEADOW'S ALPINE SALT OUTLINE. The outline is our own art and does not depend on where the salt sits,
+# so it stays an ordinary border-only family, the same drawing in every era. The GLOW cannot be a
+# family: it follows Meadow's two weighted model variants through a blockstate override (SALT_ERAS,
+# below), with Satisfy's permission (14 Sept 2026).
 add_family("meadow_alpine_salt", art="meadow", border_file="alpine_salt_border", border_only=True,
            targets=["meadow:alpine_salt_ore"])
 
@@ -1012,12 +1023,26 @@ def assert_owns_only_its_namespace(out_dir):
 
     model_modifiers APPEND a layer, so we never need to touch a host block's textures. If a future
     change genuinely needs to retexture something, it should be deliberate enough to edit this.
+
+    THE ONE EXCEPTION is Meadow's alpine salt blockstate (SALT_BLOCKSTATE), in the pack root only, and
+    it is allowed by exact path: any other file in any other namespace still refuses the zip.
     """
     intruders = set()
     for base in ("", CURRENT_ART_DIR):
         assets = os.path.join(out_dir, base, "assets")
-        if os.path.isdir(assets):
-            intruders |= {f"{base}/assets/{n}".lstrip("/") for n in os.listdir(assets) if n != PACK_NAMESPACE}
+        if not os.path.isdir(assets):
+            continue
+        for ns in os.listdir(assets):
+            if ns == PACK_NAMESPACE:
+                continue
+            files = [os.path.join(folder, name) for folder, _dirs, names in os.walk(os.path.join(assets, ns))
+                     for name in names]
+            if not files:
+                intruders.add(f"{base}/assets/{ns}".lstrip("/"))
+            for path in files:
+                rel = os.path.relpath(path, os.path.join(out_dir, base)).replace(os.sep, "/")
+                if base or rel != SALT_BLOCKSTATE:
+                    intruders.add(f"{base}/{rel}".lstrip("/"))
     if intruders:
         sys.exit("Pack writes outside its own namespace, refusing to zip: "
                  + ", ".join(f"{n}/" for n in sorted(intruders))
@@ -1061,6 +1086,110 @@ def build_whole_block_glow(out_dir, tex_dir):
                                 f"{name}.json"), modifier)
         print(f"  {name:<12} {len(spec['targets']):2d} targets  whole block glow, no border")
     return len(WHOLE_BLOCK_GLOW)
+
+
+# MEADOW'S ALPINE SALT GLOW: THE ONE BLOCKSTATE THIS PACK OVERRIDES.
+#
+# alpine_salt_ore has two weight-1 model variants whose salt sits in different places, and Fusion
+# appends per BLOCK, so no model modifier can follow the variant vanilla picked (Fusion 1.3.15 still
+# has no predicate that tells weighted variants apart). Satisfy granted the glow on 14 Sept 2026, so
+# the pack overrides Meadow's blockstate with the SAME list in the same order with the same weights,
+# which leaves vanilla's position-seeded pick unchanged, and each entry points at a Fusion composite
+# of Meadow's own model plus our glow layer: the same pair an appended model modifier produces.
+# Composite models exist, reading plain model ids, from Fusion 1.3.0 up (checked in 1.3.0 and 1.3.15).
+#
+# Meadow drew the salt differently per era and named the models differently (read from both jars):
+#   1.3.25 (1.20.1): alpine_salt_ore_1, alpine_salt_ore_2
+#   1.4.8  (1.21.1): alpine_salt_ore_0, alpine_salt_ore_1
+# So the blockstate is written ONCE, naming our own two composites, and the composites and their
+# overlay textures split by era exactly like LEGACY_ART: the 1.20.1 pair in the pack root and the
+# 1.21.1 pair in current_art/, which only 1.20.2 and up read. Meadow has nothing between 1.20.1 and
+# 1.21.1 and nothing at 26.x, where the blockstate names a block that does not exist and is ignored.
+#
+# WITHOUT FUSION the composites cannot load: on Forge and NeoForge the salt ore shows the missing
+# model. On Fabric each composite also names Meadow's model as its `parent`, which vanilla renders.
+# Fusion is the pack's one required dependency.
+SALT_BLOCKSTATE = "assets/meadow/blockstates/alpine_salt_ore.json"
+SALT_ERAS = {
+    # era: (the Meadow jar these were read from, [(Meadow's model, our overlay in assets/overlays/meadow)])
+    "legacy": ("letsdo-meadow-forge-1.3.25.jar",
+               [("meadow:block/alpine_salt_ore_1", "alpine_salt_overlay_1_old"),
+                ("meadow:block/alpine_salt_ore_2", "alpine_salt_overlay_2_old")]),
+    "current": ("letsdo-meadow-neoforge-1.4.8.jar",
+                [("meadow:block/alpine_salt_ore_0", "alpine_salt_overlay_0"),
+                 ("meadow:block/alpine_salt_ore_1", "alpine_salt_overlay_1")]),
+}
+
+
+def verify_salt_against_meadow():
+    """
+    Refuse to build if a Meadow jar beside the pack disagrees with the list the override copies.
+
+    A different order, weight or model name would change which variant a block picks, and the glow
+    would sit on bare limestone. The jars live in ../references/jars; without them the pack still
+    builds (it must build standalone), and says the check was skipped.
+    """
+    from PIL import Image
+    jars = os.path.normpath(os.path.join(root(), "..", "references", "jars"))
+    if len(SALT_ERAS["legacy"][1]) != len(SALT_ERAS["current"][1]):
+        sys.exit("SALT_ERAS: both eras must list the same number of variants, one blockstate serves both")
+    for era, (jar, entries) in SALT_ERAS.items():
+        path = os.path.join(jars, jar)
+        if not os.path.exists(path):
+            print(f"  -- {jar} is not in references/jars: the {era} salt override was not re-verified")
+            continue
+        with zipfile.ZipFile(path) as z:
+            listed = json.loads(z.read("assets/meadow/blockstates/alpine_salt_ore.json")).get("variants", {}).get("")
+            want = [{"model": model, "weight": 1} for model, _art in entries]
+            if listed != want:
+                sys.exit(f"{jar}: alpine_salt_ore lists {listed}, the override copies {want}. "
+                         f"Update SALT_ERAS from the jar before building.")
+            for model, art in entries:
+                texture = Image.open(io.BytesIO(z.read(
+                    f"assets/meadow/textures/block/{model.split('/')[-1]}.png"))).convert("RGBA")
+                overlay = Image.open(os.path.join(root(), "assets", "overlays", "meadow", f"{art}.png")).convert("RGBA")
+                opaque = [(x, y) for y in range(16) for x in range(16) if overlay.getpixel((x, y))[3]]
+                exact = sum(1 for p in opaque if overlay.getpixel(p)[:3] == texture.getpixel(p)[:3])
+                if exact != len(opaque):
+                    print(f"  !! {art}: only {exact} of {len(opaque)} pixels match {model} in {jar}")
+
+
+def build_salt_glow(out_dir, tex_dir, current_tex_dir):
+    """Write the alpine salt override: one blockstate, and per era the composites and overlays."""
+    write_json(os.path.join(out_dir, *SALT_BLOCKSTATE.split("/")), {"variants": {"": [
+        {"model": f"{PACK_NAMESPACE}:block/meadow_alpine_salt_{i}", "weight": 1}
+        for i in range(len(SALT_ERAS["legacy"][1]))]}})
+    model_dirs = {"legacy": os.path.join(out_dir, "assets", PACK_NAMESPACE, "models", "block"),
+                  "current": os.path.join(out_dir, CURRENT_ART_DIR, "assets", PACK_NAMESPACE, "models", "block")}
+    tex_dirs = {"legacy": tex_dir, "current": current_tex_dir}
+    for era, (_jar, entries) in SALT_ERAS.items():
+        os.makedirs(model_dirs[era], exist_ok=True)
+        os.makedirs(tex_dirs[era], exist_ok=True)
+        for i, (meadow_model, art) in enumerate(entries):
+            texture = f"meadow_alpine_salt_{i}_overlay"
+            source = os.path.join(root(), "assets", "overlays", "meadow", f"{art}.png")
+            if not os.path.exists(source):
+                sys.exit(f"Missing art: {source}")
+            shutil.copyfile(source, os.path.join(tex_dirs[era], f"{texture}.png"))
+            meta = {"emissive": True, "render_type": "cutout"}
+            check_fusion_keys(meta)
+            write_json(os.path.join(tex_dirs[era], f"{texture}.png.mcmeta"), {"fusion": meta})
+            if era == "legacy":
+                # The glow layer's model is the same in both eras; only its texture changes.
+                write_json(os.path.join(model_dirs[era], f"{texture}.json"), {
+                    "loader": "fusion:model",
+                    "type": "base",
+                    "parent": "block/cube_all",
+                    "textures": {"all": f"{PACK_NAMESPACE}:block/{texture}"},
+                })
+            write_json(os.path.join(model_dirs[era], f"meadow_alpine_salt_{i}.json"), {
+                "loader": "fusion:model",
+                "type": "composite",
+                "parent": meadow_model,      # ignored by Fusion; what vanilla Fabric renders without it
+                "models": [meadow_model, f"{PACK_NAMESPACE}:block/{texture}"],
+            })
+    print(f"  {'meadow_alpine_salt':<12}  1 target   glow through the blockstate override "
+          f"(1.20.1 art in the root, 1.21.1 art in {CURRENT_ART_DIR}/)")
 
 
 def build(variant, spec):
@@ -1225,6 +1354,9 @@ def build(variant, spec):
         print(f"  {family:<12} {len(targets):2d} targets{note}")
         built += 1
 
+    build_salt_glow(out_dir, tex_dir, current_tex_dir)
+    if not bordered:
+        built += 1      # in the Border variant the salt already counts, as its outline family
     built += build_whole_block_glow(out_dir, tex_dir)
 
     assert_owns_only_its_namespace(out_dir)
@@ -1270,6 +1402,8 @@ def main():
             total += len(spec["targets"])
             print(f"  {name:<12} ({'whole block':<15}) {len(spec['targets']):2d}  "
                   f"{', '.join(spec['targets'])}")
+        print(f"  {'meadow_alpine_salt':<12} ({'override':<15})  1  meadow:alpine_salt_ore glows through the "
+              f"blockstate override; its outline is the border-only family above")
         print(f"\n  {len(FAMILIES) + len(WHOLE_BLOCK_GLOW)} families, {total} blocks covered")
         print(f"  Mythic Metals families ({len(MYTHIC_METALS)}): active only where that mod exists,"
               f" which is 1.21.4 and below")
@@ -1281,6 +1415,7 @@ def main():
         sys.exit("Pillow is required. Run this with 'py -3.14'.")
 
     warn_if_overlays_drifted()
+    verify_salt_against_meadow()
     spec = layout()
     build("glow", spec)
     print()

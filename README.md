@@ -27,10 +27,12 @@ Pillow is required and lives on the 3.14 install. Output:
 | `build/SeamlessGlowingOres-Glow.zip` | Emissive only |
 | `build/SeamlessGlowingOres-Border.zip` | Emissive plus the 47 tile connected outline |
 
-134 families covering 520 blocks: vanilla, every Seamless Ores variant, and the ores of Create,
-Create: New Age, Create: TFMG, Dense Mekanism, Energized Power, Exp Ores, Ice and Fire, Mekanism,
-Mythic Metals, Mythic Upgrades, Powah, Silent Gear and Silent's Gems, plus ancient debris as a whole
-block glow. Run `--list` for the breakdown; the numbers here come from it.
+196 families covering 775 blocks: vanilla, every Seamless Ores variant, and the ores of Cobblemon,
+Create, Create: New Age, Create: TFMG, Dense Mekanism, Energized Power, Exp Ores, Extreme Reactors,
+Ice and Fire, Immersive Engineering, Meadow, Mekanism, Modern Industrialization, Mystical
+Agriculture, Mythic Metals, Mythic Upgrades, Occultism, Powah, Silent Gear, Silent's Gems, Tech
+Reborn and Things, plus ancient debris as a whole block glow. Run `--list` for the breakdown; the
+numbers here come from it.
 
 **A family covers the source mod's ore AND Seamless Ores' variants of it, and those two are matched
 differently.** The source mod's blocks are listed outright; ours are discovered from the mod's own
@@ -58,8 +60,21 @@ cannot be fixed with one file.
 One file also serves two drawings of the same ore where a mod redrew it between versions. Mekanism
 and Dense Mekanism draw their tin ore differently on 1.20.1, so `LEGACY_ART` puts the old drawing in
 the pack root, which is all 1.20.1 reads, and the current one in a pack overlay, `current_art/`,
-declared in `pack.mcmeta` for resource pack format 18 (1.20.2) and up. Only textures differ between
-the two, so the overlay replaces files and never adds one, and the build refuses to zip if it would.
+declared in `pack.mcmeta` for resource pack format 18 (1.20.2) and up. The overlay replaces files and
+never adds one, and the build refuses to zip if it would. Immersive Engineering redrew nickel and
+uranium after its 1.20.1 build (1.20.4 and 1.21.1 have the new drawing), so those two go through
+`LEGACY_ART` the same way, borders included, because the colours moved too.
+
+Meadow's alpine salt ore is the one block an appended layer cannot reach. It has two weighted model
+variants with the salt in different places, and Fusion appends per block, so the pack overrides
+Meadow's blockstate (`SALT_BLOCKSTATE`) with the same list, order and weights, which leaves the game's
+pick unchanged, and points each entry at a Fusion `composite` of Meadow's own model plus the glow
+layer. Meadow named and drew those models differently on 1.20.1, so the composites and their textures
+split by era like `LEGACY_ART`, while the blockstate is written once. `verify_salt_against_meadow()`
+refuses to build if a Meadow jar in `../references/jars` lists anything else, and
+`assert_owns_only_its_namespace()` allows that one file by exact path and nothing else. Without Fusion
+the composites cannot load, so on Forge and NeoForge the salt ore shows the missing model; on Fabric
+the composite's `parent` lets vanilla draw Meadow's own model.
 
 ## Layout
 
@@ -118,8 +133,11 @@ names, so there is no orientation ambiguity to resolve by experiment.
 The file is version agnostic, so this is a tagging decision rather than a build one, and it can be
 widened later without touching the zip.
 
-**Tag 1.21.x, 26.1.x and 26.2.** That is roughly three quarters of the audience by Modrinth download
-share (Fabric API: 1.21.x 52%, 26.1.x 18%, 26.2 4%) and it is the range with no caveats at all.
+**Tag 1.21.x, 26.1.x, 26.2 and 26.3.** That is roughly three quarters of the audience by Modrinth
+download share (Fabric API: 1.21.x 52%, 26.1.x 18%, 26.2 4%) and it is the range with no caveats at
+all. 26.3 needed no change to the file: its client jar reads the same pack metadata fields as 26.2,
+so `min_format` 15 and `max_format` 999 already cover its resource format 97.1, and Fusion 1.3.15
+supports 26.3 on Fabric and NeoForge.
 
 **1.20.x is about 16 to 20%, and 1.20.1 alone is 15%, but it comes with two.** On Fabric there it
 needs Indium or nothing renders, and the Indium render path flickers. Worth adding later with both
@@ -180,5 +198,13 @@ one file can carry them: on 26.2 they are simply inert rather than an error.
 The ore overlays are derived from Minecraft's own textures and remain Mojang's property. Zinc is
 derived from Create, which is CC0 and MIT licensed. Mythic Upgrades and Mythic Metals are both MIT
 licensed.
+
+The Immersive Engineering overlays (aluminum, lead, nickel, silver and uranium) are derived from
+[Immersive Engineering](https://modrinth.com/mod/immersiveengineering)'s ore textures and are used
+with the permission of BluSunrize.
+
+The alpine salt glow is derived from [Let's Do Meadow](https://modrinth.com/mod/lets-do-meadow)'s
+salt art and is used with the permission of Satisfy. Meadow's other alpine ores use the vanilla
+overlays, and the alpine salt outline is original.
 
 Borders and the ore art arrangement are original work by chillpavz.
