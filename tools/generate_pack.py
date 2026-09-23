@@ -367,7 +367,11 @@ THIRD_PARTY = {
     # Immersive Engineering (Blu's License of Common Sense). Used with BluSunrize's permission
     # (14 Sept 2026), on condition of credit wherever credits appear. Block ids read from the 1.20.1
     # and 1.21.1 jars: ore_<metal> and deepslate_ore_<metal> on both. The art matches 1.21.1; IE
-    # redrew nickel and uranium since 1.20.1. Seamless Ores has no IE variants yet, so no suffix.
+    # redrew nickel and uranium since 1.20.1, which is what LEGACY_ART serves.
+    #
+    # Seamless Ores 4.1.0 added variants of all five (1.21.1 NeoForge, 1.20.1 Forge), and the mod
+    # prefixes every one of them ie_<metal> - family key and block suffix are the same string - so
+    # they need no SO_SUFFIX line: mod_block_targets falls back to the family key and finds them.
     "ie": ("immersive engineering", "immersiveengineering", {
         o: (o, [f"ore_{o}", f"deepslate_ore_{o}"])
         for o in ("aluminum", "lead", "nickel", "silver", "uranium")}),
@@ -483,8 +487,10 @@ SO_HOSTS.update({"cb_fire_stone": "overworld", "cb_nether_fire_stone": "nether",
                  "tr_cinnabar": "nether", "tr_pyrite": "nether", "tr_sphalerite": "nether",
                  "er_benitoite": "nether", "sg_opal": "overworld"})
 SO_HOSTS.update({"expores_experience": "overworld", "expores_nether_experience": "nether"})
-# Mekanism itself is not supported by the mod (its ore feature is a custom type the mod's injector
-# cannot rebind), so the mek_* families stay source-mod only and take no suffix.
+# Mekanism's own ore IS supported by the mod from 4.1.0 (its mekanism:ore config turned out to be a
+# record with one target list, which is exactly what ForeignOreTargets handles), and the mod prefixes
+# every variant mek_<ore>, so family key and block suffix are the same string and these need no
+# SO_SUFFIX line: mod_block_targets falls back to the family key and finds them.
 
 for _prefix, (_art, _ns, _ores) in THIRD_PARTY.items():
     for _base, (_stem, _blocks) in _ores.items():
