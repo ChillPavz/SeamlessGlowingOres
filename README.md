@@ -27,7 +27,7 @@ Pillow is required and lives on the 3.14 install. Output:
 | `build/SeamlessGlowingOres-Glow.zip` | Emissive only |
 | `build/SeamlessGlowingOres-Border.zip` | Emissive plus the 47 tile connected outline |
 
-196 families covering 815 blocks: vanilla, every Seamless Ores variant, and the ores of Cobblemon,
+196 families covering 851 blocks: vanilla, every Seamless Ores and Seamless Ores: Matrix variant, and the ores of Cobblemon,
 Create, Create: New Age, Create: TFMG, Dense Mekanism, Energized Power, Exp Ores, Extreme Reactors,
 Ice and Fire, Immersive Engineering, Meadow, Mekanism, Modern Industrialization, Mystical
 Agriculture, Mythic Metals, Mythic Upgrades, Occultism, Powah, Silent Gear, Silent's Gems, Tech
@@ -42,6 +42,10 @@ mod itself prefixes an ore whose plain name another supported mod already took, 
 `silents_silver` and `energized_tin` come from. `SO_SUFFIX` maps the two together. **A family missing
 from that map silently covers none of our blocks** - the pack still builds and the source mod's ore
 still glows, so `--list` is the only thing that catches it.
+
+Seamless Ores: Matrix's variants are discovered the same way, from the `seamlessoresmatrix-*` folders
+beside this one. Its ids are `<stonemod>_<stone>_<ore>_ore` with the full ore name, and its hosts are
+read from the mod's own host table, so a stone added there reaches the pack on the next build.
 
 Banglum and starrite each spread across several families, because Mythic Metals draws some of their
 hosts differently and a sprite is what a connecting texture is keyed on. Those five are also

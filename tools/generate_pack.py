@@ -42,6 +42,7 @@ import io
 import json
 
 import os
+import re
 import shutil
 import sys
 import zipfile
@@ -721,8 +722,48 @@ def mod_block_targets(family):
     return sorted(found)
 
 
+# Seamless Ores: Matrix, the companion mod for MODDED stones. Its ids are <stonemod>_<stone>_<ore>_ore
+# (seamlessoresmatrix:blockus_limestone_iron_ore): the stone mod is part of the name because Create and
+# Blockus both have a limestone, and the ore part is the full ore name, so nether gold is spelled
+# out and needs no host split. Its hosts are read from the mod's own host table, the same file its
+# asset generator parses, so a stone added there reaches the pack on the next build.
+MATRIX_NAMESPACE = "seamlessoresmatrix"
+MATRIX_HOST_TABLE = ("common", "src", "main", "java", "com", "chillpavz", "seamlessoresmatrix",
+                     "content", "HostStone.java")
+
+
+def matrix_dirs():
+    """Every Seamless Ores: Matrix source tree beside this pack; none is fine, the pack builds alone."""
+    parent = os.path.normpath(os.path.join(root(), ".."))
+    if not os.path.isdir(parent):
+        return []
+    return [os.path.join(parent, name) for name in sorted(os.listdir(parent))
+            if name.startswith("seamlessoresmatrix-") and name.endswith("-multiloader")]
+
+
+def matrix_block_targets(family):
+    """Matrix's blocks in this family: <host>_<ore>_ore for each host its table declares."""
+    ore = FAMILIES[family].get("matrix", family)
+    found = set()
+    for tree in matrix_dirs():
+        table = os.path.join(tree, *MATRIX_HOST_TABLE)
+        states = os.path.join(tree, "common", "src", "main", "resources", "assets", MATRIX_NAMESPACE,
+                              "blockstates")
+        if not (os.path.isfile(table) and os.path.isdir(states)):
+            continue
+        with open(table, encoding="utf-8") as handle:
+            hosts = {f"{mod}_{path}" for mod, path in
+                     re.findall(r'new HostStone\("(\w+)", "(\w+)"', handle.read())}
+        if not hosts:
+            sys.exit(f"{table}: no hosts found; the pattern no longer matches the host table")
+        for host in hosts:
+            if os.path.isfile(os.path.join(states, f"{host}_{ore}_ore.json")):
+                found.add(f"{MATRIX_NAMESPACE}:{host}_{ore}_ore")
+    return sorted(found)
+
+
 def family_targets(family):
-    return list(FAMILIES[family]["targets"]) + mod_block_targets(family)
+    return list(FAMILIES[family]["targets"]) + mod_block_targets(family) + matrix_block_targets(family)
 
 
 def target_block(target):
