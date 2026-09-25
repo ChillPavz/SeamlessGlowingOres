@@ -521,6 +521,15 @@ for _gem in ("ruby", "sapphire"):
     FAMILIES[_gem]["hosts"] = "nether"
     FAMILIES[f"sg_{_gem}"]["overlay"] = f"silents_{_gem}"
 
+# Seamless Ores: Matrix names an ore by Seamless Ores' OVERLAY key, which is unique per ore, where
+# Seamless Ores' own ids reuse a name on different hosts (matrix_key). Explicit keys for the exceptions: Silent's Gems' ruby and sapphire (Mythic Upgrades' keep the plain names), and Silent's
+# Gems' nether gems, which Matrix has no variant of and which would otherwise claim the overworld ones.
+for _gem in ("ruby", "sapphire"):
+    FAMILIES[f"sg_{_gem}"]["matrix"] = f"silents_{_gem}"
+for _g in _SG_GEMS:
+    if f"sg_nether_{_g}" in FAMILIES:
+        FAMILIES[f"sg_nether_{_g}"]["matrix"] = None
+
 for _opal in ("sg_opal", "sg_nether_opal", "sg_end_opal"):
     FAMILIES[_opal]["render_type"] = "translucent"
 
@@ -741,10 +750,38 @@ def matrix_dirs():
             if name.startswith("seamlessoresmatrix-") and name.endswith("-multiloader")]
 
 
+MATRIX_SUFFIX_PREFIXES = ("tr_", "ep_", "occ_", "sg_", "sgear_", "powah_", "ma_")
+
+
+def matrix_key(family):
+    """The ore part of this family's Matrix ids: an explicit "matrix" key, else the suffix, else the name."""
+    spec = FAMILIES[family]
+    if "matrix" in spec:
+        return spec["matrix"]
+    # A family named with its mod's prefix (tr_tin) holds the ore's Seamless Ores suffix, which is
+    # Matrix's key too (techreborn_tin); every other family is named after the key itself (nether_gold,
+    # whose Seamless Ores suffix is plain gold).
+    if family.startswith(MATRIX_SUFFIX_PREFIXES):
+        return spec.get("suffix", family)
+    return family
+
+
+def check_matrix_keys():
+    """Two families claiming one Matrix key would glow one block twice; stop instead."""
+    seen = {}
+    for family in FAMILIES:
+        key = matrix_key(family)
+        if key is not None and key in seen:
+            sys.exit(f"families {seen[key]} and {family} both claim Matrix ore key {key}")
+        seen[key] = family
+
+
 def matrix_block_targets(family):
     """Matrix's blocks in this family: <host>_<ore>_ore for each host its table declares."""
-    ore = FAMILIES[family].get("matrix", family)
+    ore = matrix_key(family)
     found = set()
+    if ore is None:
+        return []
     for tree in matrix_dirs():
         table = os.path.join(tree, *MATRIX_HOST_TABLE)
         states = os.path.join(tree, "common", "src", "main", "resources", "assets", MATRIX_NAMESPACE,
@@ -1430,6 +1467,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--list", action="store_true", help="print coverage and exit")
     args = parser.parse_args()
+    check_matrix_keys()
 
     if args.list:
         def label(target):
