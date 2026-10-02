@@ -376,6 +376,15 @@ THIRD_PARTY = {
     "ie": ("immersive engineering", "immersiveengineering", {
         o: (o, [f"ore_{o}", f"deepslate_ore_{o}"])
         for o in ("aluminum", "lead", "nickel", "silver", "uranium")}),
+    # Oreganized (code MIT, assets All Rights Reserved in its own LICENSE). Used with the permission of
+    # Binome of Team Galena (2 Oct 2026). Lead and silver, ids read from the 1.20.1 Forge, 1.20.1
+    # Fabric and 1.21.1 NeoForge jars: <ore>_ore and deepslate_<ore>_ore on all three.
+    #
+    # Seamless Ores 4.2.0 names its variants oreganized_<ore> (1.21.1 NeoForge, 1.20.1 Forge and
+    # Fabric), so the family key, the block suffix and the mod's overlay file are one string and
+    # need no SO_SUFFIX line. Its tarnished_silver art is for a block Oreganized does not have yet.
+    "oreganized": ("oreganized", "oreganized", {
+        o: (o, [f"{o}_ore", f"deepslate_{o}_ore"]) for o in ("lead", "silver")}),
     # Mystical Agriculture (MIT). Its own models are already two-layer; the glow appends on top.
     "ma": ("mystical agriculture", "mysticalagriculture", {
         "inferium":   ("inferium", ["inferium_ore", "deepslate_inferium_ore"]),
