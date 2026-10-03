@@ -494,7 +494,9 @@ SO_SUFFIX.update({
     "cb_nether_fire_stone": "fire_stone",
 })
 SO_HOSTS.update({"cb_fire_stone": "overworld", "cb_nether_fire_stone": "nether",
-                 "tr_cinnabar": "nether", "tr_pyrite": "nether", "tr_sphalerite": "nether",
+                 # Pyrite and sphalerite are not pinned: their only other host is cinnabar (Seamless
+                 # Ores 4.5.0), and no overworld ore shares their suffix.
+                 "tr_cinnabar": "nether",
                  "er_benitoite": "nether", "sg_opal": "overworld"})
 SO_HOSTS.update({"expores_experience": "overworld", "expores_nether_experience": "nether"})
 # Mekanism's own ore IS supported by the mod from 4.1.0 (its mekanism:ore config turned out to be a
@@ -676,7 +678,7 @@ def layout():
 # Host stones the mod uses as an id PREFIX. A block only counts as ours if its prefix is one of
 # these exactly. Without that check `basalt_midas_gold_ore` ends with `_gold_ore` and would be
 # swept into the vanilla `gold` family, whose prefix would come out as the non-host "basalt_midas".
-MOD_HOSTS = {"granite", "diorite", "andesite", "tuff", "dripstone", "basalt", "blackstone"}
+MOD_HOSTS = {"granite", "diorite", "andesite", "tuff", "dripstone", "cinnabar", "basalt", "blackstone"}
 NETHER_HOSTS = {"basalt", "blackstone"}
 
 
