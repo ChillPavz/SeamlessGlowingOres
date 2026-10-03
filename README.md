@@ -27,10 +27,10 @@ Pillow is required and lives on the 3.14 install. Output:
 | `build/SeamlessGlowingOres-Glow.zip` | Emissive only |
 | `build/SeamlessGlowingOres-Border.zip` | Emissive plus the 47 tile connected outline |
 
-196 families covering 1,529 blocks: vanilla, every Seamless Ores and Seamless Ores: Matrix variant, and the ores of Cobblemon,
+198 families covering 1,622 blocks: vanilla, every Seamless Ores and Seamless Ores: Matrix variant, and the ores of Cobblemon,
 Create, Create: New Age, Create: TFMG, Dense Mekanism, Energized Power, Exp Ores, Extreme Reactors,
 Ice and Fire, Immersive Engineering, Meadow, Mekanism, Modern Industrialization, Mystical
-Agriculture, Mythic Metals, Mythic Upgrades, Occultism, Powah, Silent Gear, Silent's Gems, Tech
+Agriculture, Mythic Metals, Mythic Upgrades, Occultism, Oreganized, Powah, Silent Gear, Silent's Gems, Tech
 Reborn and Things, plus ancient debris as a whole block glow. Run `--list` for the breakdown; the
 numbers here come from it.
 

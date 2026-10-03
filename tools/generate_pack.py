@@ -676,7 +676,7 @@ def layout():
 # Host stones the mod uses as an id PREFIX. A block only counts as ours if its prefix is one of
 # these exactly. Without that check `basalt_midas_gold_ore` ends with `_gold_ore` and would be
 # swept into the vanilla `gold` family, whose prefix would come out as the non-host "basalt_midas".
-MOD_HOSTS = {"granite", "diorite", "andesite", "tuff", "basalt", "blackstone"}
+MOD_HOSTS = {"granite", "diorite", "andesite", "tuff", "dripstone", "basalt", "blackstone"}
 NETHER_HOSTS = {"basalt", "blackstone"}
 
 
