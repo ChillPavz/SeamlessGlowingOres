@@ -2,8 +2,15 @@
 """
 Builds the Seamless Glowing Ores resource pack(s) in FUSION format.
 
-    py -3.14 tools/generate_pack.py           # build both variants
-    py -3.14 tools/generate_pack.py --list    # print coverage and exit
+    py -3.14 tools/generate_pack.py                    # build all four files
+    py -3.14 tools/generate_pack.py --pack animated    # only the animated pair
+    py -3.14 tools/generate_pack.py --families diamond # only the named families (a pilot)
+    py -3.14 tools/generate_pack.py --list             # print coverage and exit
+
+Four files from one family table: SeamlessGlowingOres-{Glow,Border}, still, and
+SeamlessAnimatedOres-{Glow,Border}, the same art with a GLINT: every ore layer is a generated
+animation in which a band of light grows out across the ore's own speck pixels, then rests. Nothing
+new is drawn; the frames are derived from the overlay art at build time (see glint_frames).
 
 This replaces the OptiFine/Continuity build entirely (kept, unpublished, in
 ../seamless-glowing-ores-old). Fusion is one mod covering fabric/forge/neoforge/quilt and MC
@@ -61,6 +68,26 @@ PACK_NAME = "Seamless Glowing Ores"
 # own textures must be left completely alone.
 MOD_NAMESPACE = "seamlessores"
 PACK_NAMESPACE = "seamlessglowingores"
+
+# The two packs this generator builds. The animated pair keeps a namespace of its own, so either
+# pair can sit beside the other in a pack list without one silently overwriting the other's files.
+# use_pack() switches PACK_NAME, PACK_NAMESPACE and GLINT before each build.
+PACKS = {
+    "glowing": dict(name="Seamless Glowing Ores", namespace="seamlessglowingores",
+                    zip="SeamlessGlowingOres", glint=False),
+    "animated": dict(name="Seamless Animated Ores", namespace="seamlessanimatedores",
+                     zip="SeamlessAnimatedOres", glint=True),
+}
+PACK = "glowing"
+GLINT = False
+
+
+def use_pack(key):
+    global PACK, PACK_NAME, PACK_NAMESPACE, GLINT
+    PACK = key
+    PACK_NAME = PACKS[key]["name"]
+    PACK_NAMESPACE = PACKS[key]["namespace"]
+    GLINT = PACKS[key]["glint"]
 
 # pack_format is 15, NOT 26.2's own 88, and that is deliberate.
 #
@@ -624,6 +651,80 @@ def frame_count(image):
     return 1
 
 
+# THE GLINT (animated pack only). Our own design: a soft band grows out from the middle of the face
+# to its corners, lifting only pixels the art already draws, toward white, then the ore rests.
+# Silhouette and alpha never change, so the glint can never paint outside the speck or the border
+# and never shows on the host stone. Measured in tile pixels, so a 32px overlay sweeps at the same
+# speed. The ore layer and the border sheet get the SAME frames and timing, so they glint together.
+GLINT_SWEEP_FRAMES = 12     # frames the band takes to cross the block
+GLINT_FRAMETIME = 2         # ticks per sweep frame: 12 x 2 = 24 ticks, 1.2 s to cross
+GLINT_REST_TICKS = 40       # ticks the plain art is held between sweeps (2 s); one stored frame
+GLINT_HALF_WIDTH = 2.5      # band half-width in 16px-tile pixels
+GLINT_PEAK = 0.65           # fraction of the way to white at the band's centre (0.55 read slightly dim)
+# The shape the band takes. "diamond": it grows out from the middle of the face to the corners, so it
+# looks the same from every side. "diagonal" (the first design) sweeps top-left to bottom-right in
+# texture space, which reads backwards on a top or bottom face seen from the far side, because those
+# faces are seen from all four directions (owner, 6 Oct 2026). One shape on every face: one sprite.
+GLINT_SHAPE = "diamond"
+
+
+def glint_frames(image):
+    """The plain image, then every sweep frame. Every frame is the image's own size."""
+    if frame_count(image) != 1 or image.width != image.height:
+        sys.exit("glint_frames needs a single square frame; an already animated overlay keeps its own")
+    size = image.width
+    width = GLINT_HALF_WIDTH * size / 16
+    middle = (size - 1) / 2
+    if GLINT_SHAPE == "diamond":
+        span = size - 1
+        place = lambda x, y: abs(x - middle) + abs(y - middle)
+    else:
+        span = 2 * (size - 1)
+        place = lambda x, y: x + y
+    pixels = image.load()
+    frames = [image.copy()]
+    for frame in range(1, GLINT_SWEEP_FRAMES + 1):
+        tile = image.copy()
+        # The band starts just inside its origin (the middle, or the top-left corner) and ends just
+        # past the far corners, so the first and last sweep frames only graze the art.
+        centre = -width + (span + 2 * width) * (frame - 0.5) / GLINT_SWEEP_FRAMES
+        out = tile.load()
+        for y in range(size):
+            for x in range(size):
+                r, g, b, a = pixels[x, y]
+                distance = abs(place(x, y) - centre)
+                if a == 0 or distance >= width:
+                    continue
+                lift = GLINT_PEAK * (1 - distance / width)
+                out[x, y] = (round(r + (255 - r) * lift), round(g + (255 - g) * lift),
+                             round(b + (255 - b) * lift), a)
+        frames.append(tile)
+    return frames
+
+
+def stack(frames):
+    """Frames one under another, the layout vanilla animation reads."""
+    from PIL import Image
+    width, height = frames[0].size
+    strip = Image.new("RGBA", (width, height * len(frames)), (0, 0, 0, 0))
+    for i, frame in enumerate(frames):
+        strip.paste(frame, (0, i * height))
+    return strip
+
+
+def glint_strip(image):
+    return stack(glint_frames(image))
+
+
+# The rest is ONE stored frame held for GLINT_REST_TICKS, through the frame list, so resting costs
+# no texture memory however long it is.
+GLINT_ANIMATION = {"frametime": GLINT_FRAMETIME,
+                   "frames": [{"index": 0, "time": GLINT_REST_TICKS}] + list(range(1, GLINT_SWEEP_FRAMES + 1))}
+
+# --families limits a build to the named families, for trying a change on one before all of them.
+ONLY = None
+
+
 # Edge names exactly as Fusion names them in TextureConnections. Because Fusion NAMES its
 # directions, there is no orientation ambiguity to resolve empirically - which is what caused the
 # reflected borders on the Continuity build. Do not reorder.
@@ -927,6 +1028,59 @@ def build_sheet(family, spec, ore_layer=True, legacy=False):
     return sheet
 
 
+# THE PIECED LAYOUT, for every animated border. Fusion's `full` layout makes one sprite per tile, 47 per
+# family, and on 26.2 each ANIMATED sprite costs about half a megabyte of native memory whatever its
+# size: the full-layout bordered pack measured +5.4 GB over no pack, against +75 MB for the borderless
+# one (harness SAO_MEM, 4 Oct 2026). `pieced` stores five tiles and builds every connection state by
+# giving each QUARTER of the face one of them (PiecedLayoutHandler), so the cost drops ~9x.
+#
+# It reproduces the 47-tile sheet exactly because this border is quarter-local: a pixel in the top-left
+# quarter is only ever owned by the top edge, the left edge, or both (mitre_owners), so what it shows
+# depends only on those two edges and the corner between them, which is what a pieced quarter keys on.
+# Tile order, from PiecedLayoutHandler's whole-sprite cases:
+PIECED_TILES = [
+    ([], []),                                          # 0: nothing connected, full frame
+    (EDGES, ["top_left", "top_right", "bottom_left", "bottom_right"]),  # 1: all connected: empty
+    (["top", "bottom"], []),                           # 2: top and bottom connected: left/right lines
+    (["left", "right"], []),                           # 3: left and right connected: top/bottom lines
+    (EDGES, []),                                       # 4: four sides, no diagonals: inner corner marks
+]
+
+
+# A PIECED BORDER MUST SIT OFF THE FACE. Wherever a face's four corners need different pieces, Fusion
+# splits it into four quarter quads with new vertices. They lie in the block face's plane but are new
+# triangles, so their depth differs from the block's own face by rounding, and the border loses the
+# depth test by view angle: whole runs of outline vanish and return as the camera moves (harness
+# sweep, 6 Oct 2026, 26.3 Fabric without Sodium; seen by the owner on every loader). The `full`
+# layout keeps one quad identical to the block's face and never fights. Lifting the border cube by
+# BORDER_LIFT (model units, 16 per block) clears the fight; 0.05 is 0.003 of a block, invisible,
+# and above depth precision out to roughly 50 blocks.
+BORDER_LIFT = 0.05
+
+
+def lifted_cube():
+    """cube_all's single element, grown by BORDER_LIFT on every side, faces still culled as cube_all."""
+    faces = {side: {"texture": "#all", "cullface": side, "uv": [0, 0, 16, 16]}
+             for side in ("down", "up", "north", "south", "west", "east")}
+    return [{"from": [-BORDER_LIFT] * 3, "to": [16 + BORDER_LIFT] * 3, "faces": faces}]
+
+
+def build_pieced(master):
+    """One frame of the 5x1 pieced border sheet, border only, from the border master."""
+    from PIL import Image
+    size = master.width
+    owners = mitre_owners(size)
+    empty = Image.new("RGBA", master.size, (0, 0, 0, 0))
+    sheet = Image.new("RGBA", (size * len(PIECED_TILES), size), (0, 0, 0, 0))
+    for i, (connected, diagonals) in enumerate(PIECED_TILES):
+        # build_tile takes the corners that DO get an inner mark: those whose two edges connect but
+        # whose diagonal does not.
+        inner = [] if not connected else [c for c in ("top_left", "top_right", "bottom_left", "bottom_right")
+                                          if c not in diagonals and set(c.split("_")) <= set(connected)]
+        sheet.paste(build_tile(empty, master, owners, connected, inner), (i * size, 0))
+    return sheet
+
+
 def write_json(path, data):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as handle:
@@ -1144,9 +1298,22 @@ def assert_owns_only_its_namespace(out_dir):
                  + f"\n  (only assets/{PACK_NAMESPACE}/ is allowed - see the namespace note above)")
 
 
+def write_plain_glow(source, target):
+    """A plain emissive texture and its mcmeta: the art as drawn, or in the animated pack its glint."""
+    payload = {"fusion": {"emissive": True, "render_type": "cutout"}}
+    check_fusion_keys(payload["fusion"])
+    if GLINT:
+        from PIL import Image
+        glint_strip(Image.open(source).convert("RGBA")).save(target)
+        payload["animation"] = GLINT_ANIMATION
+    else:
+        shutil.copyfile(source, target)
+    write_json(f"{target}.mcmeta", payload)
+
+
 def build_whole_block_glow(out_dir, tex_dir):
     """
-    Ship the whole-block glow entries, identically in both variants.
+    Ship the whole-block glow entries, identically in both variants (glinted in the animated pack).
 
     These get no border and no connection, so nothing here depends on `bordered`. The appended model
     is a full opaque copy of the block's own texture marked emissive, which is what makes the entire
@@ -1158,10 +1325,7 @@ def build_whole_block_glow(out_dir, tex_dir):
             source = os.path.join(root(), "assets", "whole_block", f"{texture}.png")
             if not os.path.exists(source):
                 sys.exit(f"Missing whole-block art: {source}")
-            shutil.copyfile(source, os.path.join(tex_dir, f"{texture}_glow.png"))
-            meta = {"emissive": True, "render_type": "cutout"}
-            check_fusion_keys(meta)
-            write_json(os.path.join(tex_dir, f"{texture}_glow.png.mcmeta"), {"fusion": meta})
+            write_plain_glow(source, os.path.join(tex_dir, f"{texture}_glow.png"))
             appended[slot] = f"{PACK_NAMESPACE}:block/{texture}_glow"
 
         write_json(os.path.join(out_dir, "assets", PACK_NAMESPACE, "models", "block", f"{name}_glow.json"), {
@@ -1265,10 +1429,7 @@ def build_salt_glow(out_dir, tex_dir, current_tex_dir):
             source = os.path.join(root(), "assets", "overlays", "meadow", f"{art}.png")
             if not os.path.exists(source):
                 sys.exit(f"Missing art: {source}")
-            shutil.copyfile(source, os.path.join(tex_dirs[era], f"{texture}.png"))
-            meta = {"emissive": True, "render_type": "cutout"}
-            check_fusion_keys(meta)
-            write_json(os.path.join(tex_dirs[era], f"{texture}.png.mcmeta"), {"fusion": meta})
+            write_plain_glow(source, os.path.join(tex_dirs[era], f"{texture}.png"))
             if era == "legacy":
                 # The glow layer's model is the same in both eras; only its texture changes.
                 write_json(os.path.join(model_dirs[era], f"{texture}.json"), {
@@ -1290,7 +1451,9 @@ def build_salt_glow(out_dir, tex_dir, current_tex_dir):
 def build(variant, spec):
     from PIL import Image
 
-    out_dir = os.path.join(root(), "build", variant)
+    # Each pack stages in its own folder: build/glow and build/border for the still pair, as always,
+    # and build/animated-glow and build/animated-border for the animated pair.
+    out_dir = os.path.join(root(), "build", variant if PACK == "glowing" else f"{PACK}-{variant}")
     if os.path.exists(out_dir):
         shutil.rmtree(out_dir)
     os.makedirs(out_dir, exist_ok=True)
@@ -1320,6 +1483,8 @@ def build(variant, spec):
 
     built = 0
     for family in FAMILIES:
+        if ONLY is not None and family not in ONLY:
+            continue
         targets = family_targets(family)
         if not targets:
             print(f"  !! {family}: no targets - skipped")
@@ -1335,7 +1500,15 @@ def build(variant, spec):
         from PIL import Image
         animation = ANIMATED.get(family)
         overlay_art = None if border_only else Image.open(art_path(family, "overlays")).convert("RGBA")
-        frames = 1 if border_only else frame_count(overlay_art)
+        # In the animated pack a still overlay gets the glint; an overlay its mod already animates
+        # keeps that animation, and so keeps the proven `full` border below.
+        glint = None
+        if GLINT and overlay_art is not None and animation is None and frame_count(overlay_art) == 1:
+            glint = glint_strip(overlay_art)
+            animation = GLINT_ANIMATION
+        frames = 1 if border_only else frame_count(glint or overlay_art)
+        # The border glints wherever the ore does, and on a border-only family (the salt outline) too.
+        border_glint = GLINT and (glint is not None or border_only)
         if animation and frames == 1:
             sys.exit(f"{family} is declared in ANIMATED but its overlay is a single frame")
         if frames > 1 and not animation:
@@ -1352,7 +1525,7 @@ def build(variant, spec):
         # root, because they are the same in both eras.
         eras = [(tex_dir, False)]
         if family in LEGACY_ART:
-            if animation or border_only:
+            if (animation and glint is None) or border_only:
                 sys.exit(f"{family}: LEGACY_ART only handles still families with an overlay")
             for kind in ("overlays", "borders"):
                 if not os.path.exists(art_path(family, kind, legacy=True)):
@@ -1366,7 +1539,11 @@ def build(variant, spec):
         if (not bordered or split) and not border_only:
             texture = f"{family}_overlay"
             for era_dir, legacy in eras:
-                shutil.copyfile(art_path(family, "overlays", legacy), os.path.join(era_dir, f"{texture}.png"))
+                if glint is not None:
+                    era_art = Image.open(art_path(family, "overlays", legacy)).convert("RGBA")
+                    glint_strip(era_art).save(os.path.join(era_dir, f"{texture}.png"))
+                else:
+                    shutil.copyfile(art_path(family, "overlays", legacy), os.path.join(era_dir, f"{texture}.png"))
             meta = {"emissive": True, "render_type": render_type}
             check_fusion_keys(meta)
             payload = {"fusion": meta}
@@ -1389,13 +1566,20 @@ def build(variant, spec):
         if bordered:
             texture = f"{family}_border" if split else f"{family}_overlay"
             for era_dir, legacy in eras:
-                build_sheet(family, spec, ore_layer=not split, legacy=legacy).save(
-                    os.path.join(era_dir, f"{texture}.png"))
+                if border_glint:
+                    # The border glints too: one whole border-only pieced sheet per glint frame,
+                    # stacked, so every tile carries the same frames and timing as the ore beneath it.
+                    master = Image.open(art_path(family, "borders", legacy)).convert("RGBA")
+                    stack([build_pieced(frame) for frame in glint_frames(master)]).save(
+                        os.path.join(era_dir, f"{texture}.png"))
+                else:
+                    build_sheet(family, spec, ore_layer=not split, legacy=legacy).save(
+                        os.path.join(era_dir, f"{texture}.png"))
             meta = {
                 "emissive": True,
                 "render_type": render_type,
                 "type": "connecting",
-                "layout": "full",
+                "layout": "pieced" if border_glint else "full",
                 # Connect to every block in the family, so a granite iron ore borders seamlessly
                 # into vanilla stone and deepslate iron ore. `ignore_missing` keeps the pack quiet
                 # when the mod that owns some of these targets is not installed.
@@ -1409,15 +1593,22 @@ def build(variant, spec):
                 "connections": connection_predicates(family),
             }
             check_fusion_keys(meta)
+            sheet_payload = {"fusion": meta}
+            if border_glint:
+                sheet_payload["animation"] = GLINT_ANIMATION
             for era_dir, _legacy in eras:
-                write_json(os.path.join(era_dir, f"{texture}.png.mcmeta"), {"fusion": meta})
-            write_json(os.path.join(out_dir, "assets", PACK_NAMESPACE, "models", "block",
-                                    f"{texture}.json"), {
+                write_json(os.path.join(era_dir, f"{texture}.png.mcmeta"), sheet_payload)
+            border_model = {
                 "loader": "fusion:model",
                 "type": "connecting",
                 "parent": "block/cube_all",
                 "textures": {"all": f"{PACK_NAMESPACE}:block/{texture}"},
-            })
+            }
+            if border_glint:
+                border_model["elements"] = lifted_cube()
+                border_model["textures"]["particle"] = border_model["textures"]["all"]
+            write_json(os.path.join(out_dir, "assets", PACK_NAMESPACE, "models", "block",
+                                    f"{texture}.json"), border_model)
             appended.append(f"{PACK_NAMESPACE}:block/{texture}")
 
         # The modifier APPENDS those models to each target block without touching its own model.
@@ -1449,10 +1640,11 @@ def build(variant, spec):
         print(f"  {family:<12} {len(targets):2d} targets{note}")
         built += 1
 
-    build_salt_glow(out_dir, tex_dir, current_tex_dir)
-    if not bordered:
-        built += 1      # in the Border variant the salt already counts, as its outline family
-    built += build_whole_block_glow(out_dir, tex_dir)
+    if ONLY is None:
+        build_salt_glow(out_dir, tex_dir, current_tex_dir)
+        if not bordered:
+            built += 1      # in the Border variant the salt already counts, as its outline family
+        built += build_whole_block_glow(out_dir, tex_dir)
 
     assert_owns_only_its_namespace(out_dir)
     assert_no_excluded_mods(out_dir)
@@ -1464,7 +1656,7 @@ def build(variant, spec):
                 sys.exit(f"{CURRENT_ART_DIR}/{rel} has no counterpart in the pack root, so 1.20.1 "
                          f"would not have it. The overlay may only replace files, never add them.")
 
-    zip_path = os.path.join(root(), "build", f"SeamlessGlowingOres-{variant.capitalize()}.zip")
+    zip_path = os.path.join(root(), "build", f"{PACKS[PACK]['zip']}-{variant.capitalize()}.zip")
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as archive:
         for folder, _dirs, files in os.walk(out_dir):
             for filename in files:
@@ -1477,8 +1669,16 @@ def build(variant, spec):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--list", action="store_true", help="print coverage and exit")
+    parser.add_argument("--pack", choices=sorted(PACKS), help="build only this pair (default: both)")
+    parser.add_argument("--families", help="comma-separated family keys to build, and nothing else")
     args = parser.parse_args()
     check_matrix_keys()
+    global ONLY
+    if args.families:
+        ONLY = set(args.families.split(","))
+        unknown = ONLY - set(FAMILIES)
+        if unknown:
+            sys.exit(f"unknown families: {', '.join(sorted(unknown))}")
 
     if args.list:
         def label(target):
@@ -1513,9 +1713,13 @@ def main():
     warn_if_overlays_drifted()
     verify_salt_against_meadow()
     spec = layout()
-    build("glow", spec)
-    print()
-    build("border", spec)
+    for pack in ([args.pack] if args.pack else PACKS):
+        use_pack(pack)
+        print(f"== {PACK_NAME}")
+        build("glow", spec)
+        print()
+        build("border", spec)
+        print()
 
 
 if __name__ == "__main__":

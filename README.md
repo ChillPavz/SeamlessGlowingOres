@@ -16,8 +16,10 @@ in `tools/` is not.
 ## Building
 
 ```
-py -3.14 tools/generate_pack.py            # builds both zips into build/
-py -3.14 tools/generate_pack.py --list     # prints coverage and exits
+py -3.14 tools/generate_pack.py                     # builds all four zips into build/
+py -3.14 tools/generate_pack.py --pack animated     # only the animated pair
+py -3.14 tools/generate_pack.py --families diamond  # only the named families, for a pilot
+py -3.14 tools/generate_pack.py --list              # prints coverage and exits
 ```
 
 Pillow is required and lives on the 3.14 install. Output:
@@ -26,6 +28,11 @@ Pillow is required and lives on the 3.14 install. Output:
 |---|---|
 | `build/SeamlessGlowingOres-Glow.zip` | Emissive only |
 | `build/SeamlessGlowingOres-Border.zip` | Emissive plus the 47 tile connected outline |
+| `build/SeamlessAnimatedOres-Glow.zip` | Emissive, with the glint |
+| `build/SeamlessAnimatedOres-Border.zip` | Emissive plus a connected outline, both with the glint |
+
+`build/` holds whatever was built last, and a `--families` pilot leaves a partial zip there. Build
+in full before handing a zip to anyone.
 
 198 families covering 1,622 blocks: vanilla, every Seamless Ores and Seamless Ores: Matrix variant, and the ores of Cobblemon,
 Create, Create: New Age, Create: TFMG, Dense Mekanism, Energized Power, Exp Ores, Extreme Reactors,
@@ -167,28 +174,26 @@ and crashes the game on load.
 
 A plain, non-connecting Fusion texture CAN animate: `VanillaTextureType.createTexture` calls
 `SpriteImageSource.vanilla(image, animationMetadata)`, and `FusionSpriteContents` carries the frame
-list and its own ticker. So an animated glow is mechanically available; only the bordered sheet is
-closed off. That route is written up under "an animated third variant" below rather than retried
-here, since stormyx itself is settled.
+list and its own ticker. So an animated glow is mechanically available; only the `full` bordered
+sheet is closed off. The animated pair below uses that route, with a `pieced` border instead.
 
-## An animated third variant, if it is ever wanted
+## The animated pair
 
-Feasible for the **Glow style only**, and the blocker is art rather than code.
+The animated files are the same families and the same art, with a glint: a soft band grows out from
+the middle of each face to its corners, lifting only pixels the art already draws toward white, then
+the ore rests. Nothing new is drawn; `glint_frames()` derives the frames at build time. 12 sweep
+frames at frametime 2 (1.2 s), then the plain art held for 40 ticks as one stored frame, so the rest
+costs no texture memory. The shape is the same from every side, which a diagonal sweep is not on a
+top face seen from the far side. They ship in their own namespace, `seamlessanimatedores`, so either
+pair can sit beside the other without overwriting it.
 
-The mechanism is available: a plain Fusion texture keeps vanilla's `animation` section, so an N frame
-vertical strip per family plus `{"animation": {...}}` beside the `fusion` section is all the format
-needs. The bordered style can never join in, for the reason above.
-
-The cost is N frames per family across 44 families, which is not worth hand drawing. The cheap route
-is to DERIVE the frames from the single overlay each family already has, for example a brightness or
-saturation cycle, so no new art is needed and the result stays our own work. Every ore would pulse in
-the same rhythm, which is a different look from hand authored shimmer; judge that on one family in
-game before generating all 44.
-
-For reference, packs that do animate ores generally replace the block's texture outright rather than
-appending a layer, which is why vanilla animation just works for them. That trade gives up everything
-the append design buys: other packs showing through underneath, one overlay per ore instead of one
-per ore per host, and a file measured in tens of kilobytes rather than thousands of PNGs.
+Families whose mod already animates the ore (`ANIMATED`) keep that animation and the `full` border.
+Every other animated border uses Fusion's `pieced` layout, one border only sheet per glint frame:
+`full` makes 47 animated sprites per family and measured +5.4 GB of native memory on 26.2, `pieced`
+makes five. A pieced face is split into quarter quads that lose the depth test against the block's
+own face by view angle, so whole runs of outline vanish as the camera moves; `lifted_cube()` grows the
+border cube by `BORDER_LIFT` (0.003 of a block) on every side, which clears it. Ancient debris and the
+alpine salt glint as well.
 
 ## Mythic Metals
 
