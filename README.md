@@ -158,10 +158,20 @@ written on the page; not worth leading with.
 lower still.** It also cannot be made to stop reporting as incompatible: one `pack_format` integer
 cannot match several eras and `min_format` may not go below 15. Leave it untagged.
 
-## Stormyx is not animated, and that is settled
+## Ores their own mod animates
 
-Mythic Metals animates that ore through five frames at frametime 20. Matching it was attempted twice
-and abandoned, so stormyx is an ordinary family: one overlay, one border, one still frame each.
+Where the source mod animates an ore, the glow plays the same frames in step with it. `ANIMATED`
+holds the timing, copied from each mod's own mcmeta rather than chosen: Mythic Metals' stormyx (five
+frames at frametime 20) and unobtainium (four at 60), Silent's Gems' chaos ore (four at 10), and
+Extreme Reactors' yellorite, anglesite and benitoite, whose custom frame order is read from the
+mcmeta kept beside the overlay. An overlay with several frames and no `ANIMATED` entry fails the
+build, since it would otherwise be stitched as one tall still image.
+
+In the Border file such a family appends two models instead of one: a plain plate carrying the
+animated glow, and a connecting sheet carrying only the border, still. Every other family keeps the
+single composited sheet. None of these plates set `interpolate`: that path crashed on world entry
+through Fusion's sprite pipeline (an empty frame list in `SpriteContents$Interpolation`), and leaving
+it out costs only the cross fade between frames.
 
 An animated `full` connecting sheet is not viable. `ConnectingTextureType.createTexture` rebuilds the
 metadata as `frameWidth = w / layout.getWidth()`, `frameHeight = h / layout.getHeight()`, then crops
