@@ -783,13 +783,21 @@ MOD_HOSTS = {"granite", "diorite", "andesite", "tuff", "dripstone", "cinnabar", 
 NETHER_HOSTS = {"basalt", "blackstone"}
 
 
+MONOLITH = "seamlessores-monolith"
+
+
 def mod_asset_dirs(*parts):
-    """Every branch of the MOD's assets, newest content first.
+    """Every source folder of the MOD's assets, across all its Minecraft bands.
 
     One pack file serves every Minecraft version, so it should list the UNION of our blocks across
-    branches: `ignore_missing_targets` skips the ones that do not exist on the version in use. The
-    branches genuinely differ - Mythic Metals support lives on 1.21.x, so the 26.2 branch alone
-    would miss 68 blocks - hence a scan rather than one hardcoded path.
+    bands: `ignore_missing_targets` skips the ones that do not exist on the version in use. The bands
+    genuinely differ (Mythic Metals support lives on 1.21.x, so 26.x alone would miss 68 blocks),
+    hence a scan rather than one hardcoded path.
+
+    The mod's repository keeps every band in one folder, seamlessores-monolith/<band>/, where a band
+    folder may hold several builds (1.21/common/src/<era>/resources). Before that, each band was its
+    own seamlessores-<band>-multiloader folder: read only when the monolith is not there, so a stale
+    old folder cannot keep a block alive in the pack.
 
     The mod lives in a separate repository, so this must tolerate all of them being absent: the pack
     has to build standalone.
@@ -798,6 +806,17 @@ def mod_asset_dirs(*parts):
     if not os.path.isdir(parent):
         return []
     found = []
+    monolith = os.path.join(parent, MONOLITH)
+    if os.path.isdir(monolith):
+        for band in sorted(os.listdir(monolith)):
+            src = os.path.join(monolith, band, "common", "src")
+            if not os.path.isdir(src):
+                continue
+            for era in sorted(os.listdir(src)):
+                path = os.path.join(src, era, "resources", "assets", MOD_NAMESPACE, *parts)
+                if os.path.isdir(path):
+                    found.append(path)
+        return found
     for name in sorted(os.listdir(parent)):
         if not (name.startswith("seamlessores-") and name.endswith("-multiloader")):
             continue
@@ -806,6 +825,16 @@ def mod_asset_dirs(*parts):
         if os.path.isdir(path):
             found.append(path)
     return found
+
+
+def branch_of(path):
+    """The band a mod_asset_dirs() folder belongs to: 1.20.1, 1.21.4, 26.x, as the mod's builds name them."""
+    parent = os.path.normpath(os.path.join(root(), ".."))
+    rel = os.path.relpath(path, parent).split(os.sep)
+    if rel[0] == MONOLITH:
+        band, era = rel[1], rel[4]
+        return band if era == "main" else era
+    return rel[0].removeprefix("seamlessores-").removesuffix("-multiloader")
 
 
 def mod_block_targets(family):
@@ -843,23 +872,23 @@ def mod_block_targets(family):
     return sorted(found)
 
 
-# Seamless Ores: Matrix, the companion mod for MODDED stones. Its ids are <stonemod>_<stone>_<ore>_ore
-# (seamlessoresmatrix:blockus_limestone_iron_ore): the stone mod is part of the name because Create and
-# Blockus both have a limestone, and the ore part is the full ore name, so nether gold is spelled
-# out and needs no host split. Its hosts are read from the mod's own host table, the same file its
-# asset generator parses, so a stone added there reaches the pack on the next build.
-MATRIX_NAMESPACE = "seamlessoresmatrix"
-MATRIX_HOST_TABLE = ("common", "src", "main", "java", "com", "chillpavz", "seamlessoresmatrix",
+# The Matrix ores, Seamless Ores' blocks in MODDED stones (they were a separate mod, Seamless Ores:
+# Matrix, until it was folded in). Their ids are <stonemod>_<stone>_<ore>_ore in the mod's own namespace
+# (seamlessores:blockus_limestone_iron_ore): the stone mod is part of the name because Create and
+# Blockus both have a limestone, and the ore part is the full ore name, so nether gold is spelled out
+# and needs no host split. Their hosts are read from the mod's own Matrix host table, the same file
+# its generator parses, so a stone added there reaches the pack on the next build. Only 26.x has them.
+MATRIX_HOST_TABLE = ("common", "src", "main", "java", "com", "chillpavz", "seamlessores", "matrix",
                      "content", "HostStone.java")
 
 
 def matrix_dirs():
-    """Every Seamless Ores: Matrix source tree beside this pack; none is fine, the pack builds alone."""
-    parent = os.path.normpath(os.path.join(root(), ".."))
-    if not os.path.isdir(parent):
+    """The mod's band folders that carry the Matrix ores; none is fine, the pack builds alone."""
+    monolith = os.path.normpath(os.path.join(root(), "..", MONOLITH))
+    if not os.path.isdir(monolith):
         return []
-    return [os.path.join(parent, name) for name in sorted(os.listdir(parent))
-            if name.startswith("seamlessoresmatrix-") and name.endswith("-multiloader")]
+    return [os.path.join(monolith, band) for band in sorted(os.listdir(monolith))
+            if os.path.isfile(os.path.join(monolith, band, *MATRIX_HOST_TABLE))]
 
 
 MATRIX_SUFFIX_PREFIXES = ("tr_", "ep_", "occ_", "sg_", "sgear_", "powah_", "ma_")
@@ -896,7 +925,7 @@ def matrix_block_targets(family):
         return []
     for tree in matrix_dirs():
         table = os.path.join(tree, *MATRIX_HOST_TABLE)
-        states = os.path.join(tree, "common", "src", "main", "resources", "assets", MATRIX_NAMESPACE,
+        states = os.path.join(tree, "common", "src", "main", "resources", "assets", MOD_NAMESPACE,
                               "blockstates")
         if not (os.path.isfile(table) and os.path.isdir(states)):
             continue
@@ -907,7 +936,7 @@ def matrix_block_targets(family):
             sys.exit(f"{table}: no hosts found; the pattern no longer matches the host table")
         for host in hosts:
             if os.path.isfile(os.path.join(states, f"{host}_{ore}_ore.json")):
-                found.add(f"{MATRIX_NAMESPACE}:{host}_{ore}_ore")
+                found.add(f"{MOD_NAMESPACE}:{host}_{ore}_ore")
     return sorted(found)
 
 
@@ -1204,8 +1233,7 @@ def warn_if_overlays_drifted():
             theirs = os.path.join(mod_textures, name)
             if not os.path.exists(theirs):
                 continue
-            branch = os.path.relpath(mod_textures, parent).split(os.sep)[0]
-            branch = branch.removeprefix("seamlessores-").removesuffix("-multiloader")
+            branch = branch_of(mod_textures)
             # A LEGACY_ART family's old drawing is the right one on a branch whose mod still has it.
             expected = art_path(family, "overlays", family in LEGACY_ART and branch in LEGACY_BRANCHES)
             with open(expected, "rb") as a, open(theirs, "rb") as b:
