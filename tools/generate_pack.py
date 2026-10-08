@@ -808,6 +808,12 @@ def mod_asset_dirs(*parts):
     found = []
     monolith = os.path.join(parent, MONOLITH)
     if os.path.isdir(monolith):
+        # The overlay art lives once, in shared/textures/; a band folder keeps only the overlays whose
+        # drawing differs on that band (under the same name).
+        if parts and parts[0] == "textures":
+            pool = os.path.join(monolith, "shared", "textures", *parts[1:])
+            if os.path.isdir(pool):
+                found.append(pool)
         for band in sorted(os.listdir(monolith)):
             src = os.path.join(monolith, band, "common", "src")
             if not os.path.isdir(src):
@@ -832,6 +838,8 @@ def branch_of(path):
     parent = os.path.normpath(os.path.join(root(), ".."))
     rel = os.path.relpath(path, parent).split(os.sep)
     if rel[0] == MONOLITH:
+        if rel[1] == "shared":
+            return "shared"
         band, era = rel[1], rel[4]
         return band if era == "main" else era
     return rel[0].removeprefix("seamlessores-").removesuffix("-multiloader")
