@@ -418,6 +418,17 @@ THIRD_PARTY = {
         "prosperity": ("prosperity", ["prosperity_ore", "deepslate_prosperity_ore"]),
         "soulium":    ("soulium", ["soulium_ore"]),
     }),
+    # Malum (All Rights Reserved; used with the permission of Sammy Semicolon, 8 Oct 2026). Ids read from
+    # the 1.21.1 NeoForge, 1.20.1 Forge and 1.20.1 Fabric jars. The overlays are the owner's, and two of
+    # them are Malum's own glow layers. Cthonic gold has no Seamless Ores variant (Malum's feature only
+    # grows its clusters when its own ore is the first target), so here it glows Malum's block alone.
+    "malum": ("malum", "malum", {
+        "soulstone":      ("soulstone", ["soulstone_ore", "deepslate_soulstone_ore"]),
+        "natural_quartz": ("natural_quartz", ["natural_quartz_ore", "deepslate_quartz_ore"]),
+        "brilliance":     ("brilliant", ["brilliant_stone", "brilliant_deepslate"]),
+        "blazing_quartz": ("blazing_quartz", ["blazing_quartz_ore"]),
+        "cthonic_gold":   ("cthonic_gold", ["cthonic_gold_ore"]),
+    }),
     # Cobblemon (MPL-2.0). ONE universal overlay per evolution stone serves every rock it sits on,
     # including Cobblemon's own dripstone moon stone and terracotta sun stone. The art is the SOLVED
     # set: Cobblemon's translucent edge ring with the translucency removed (the mod instead draws
@@ -485,6 +496,8 @@ for _o in ("fluorite", "lead", "osmium", "tin", "uranium"):
     SO_SUFFIX[f"dmek_{_o}"] = f"dense_{_o}"          # densemekanism:dense_<ore>_ore
 for _o in ("lead", "lithium", "nickel"):
     SO_SUFFIX[f"tfmg_{_o}"] = _o
+for _o in ("soulstone", "natural_quartz", "brilliance", "blazing_quartz"):
+    SO_SUFFIX[f"malum_{_o}"] = _o
 SO_SUFFIX.update({
     # Chaos and silver are Silent's Gems entries outside the gem list above, so they need their own
     # lines. Silver is one of the names the mod prefixes, because Mythic Metals has a silver too.
@@ -566,7 +579,19 @@ for _gem in ("ruby", "sapphire"):
     FAMILIES[f"sg_{_gem}"]["matrix"] = f"silents_{_gem}"
 for _g in _SG_GEMS:
     if f"sg_nether_{_g}" in FAMILIES:
-        FAMILIES[f"sg_nether_{_g}"]["matrix"] = None
+        # Seamless Ores keys these nether_<its key> (OreType.silentNether): the stones other mods place
+        # in the Nether band (Create's scoria and scorchia, smooth basalt) take them from 1.21.1.
+        FAMILIES[f"sg_nether_{_g}"]["matrix"] = f"nether_{_SG_SO_NAME.get(_g, _g)}"
+# The other one-name pairs: the Nether form has its own key, or none (a fire stone in scoria is the one
+# fire stone ore, glowed by the overworld family's art).
+FAMILIES["expores_nether_experience"]["matrix"] = "nether_experience"
+FAMILIES["cb_nether_fire_stone"]["matrix"] = None
+# Malum: the overlay keys of the mod (brilliance is drawn as brilliant), and no variant of cthonic gold.
+for _o, _key in (("soulstone", "soulstone"), ("natural_quartz", "natural_quartz"), ("brilliance", "brilliant"),
+                 ("blazing_quartz", "blazing_quartz")):
+    FAMILIES[f"malum_{_o}"]["matrix"] = _key
+    FAMILIES[f"malum_{_o}"]["overlay"] = _key
+FAMILIES["malum_cthonic_gold"]["matrix"] = None
 
 for _opal in ("sg_opal", "sg_nether_opal", "sg_end_opal"):
     FAMILIES[_opal]["render_type"] = "translucent"
@@ -885,14 +910,14 @@ def mod_block_targets(family):
 # (seamlessores:blockus_limestone_iron_ore): the stone mod is part of the name because Create and
 # Blockus both have a limestone, and the ore part is the full ore name, so nether gold is spelled out
 # and needs no host split. Their hosts are read from the mod's own host table (its placed(...) stones),
-# the same file its generator parses, so a stone added there reaches the pack on the next build. Only
-# 26.x has them.
-MATRIX_HOST_TABLE = ("common", "src", "main", "java", "com", "chillpavz", "seamlessores", "content",
-                     "HostStone.java")
+# the same file its generator parses, so a stone added there reaches the pack on the next build. Every
+# band has them; a band folder may hold several builds (1.21/common/src/<era>/), each with its own table.
+MATRIX_HOST_TABLE = ("java", "com", "chillpavz", "seamlessores", "content", "HostStone.java")
 
 
 def matrix_hosts(tree):
-    """The stones other mods place, as id prefixes (blockus_limestone), from one band's host table."""
+    """The stones other mods place, as id prefixes (blockus_limestone), from one build's host table
+    (tree: a band's common/src/<era> folder)."""
     table = os.path.join(tree, *MATRIX_HOST_TABLE)
     if not os.path.isfile(table):
         return set()
@@ -901,19 +926,24 @@ def matrix_hosts(tree):
 
 
 def matrix_dirs():
-    """The mod's band folders that carry the Matrix ores; none is fine, the pack builds alone. The
-    monolith's 26.x band has them, so finding none there means the host table changed shape."""
+    """The mod's build folders (<band>/common/src/<era>) that carry the Matrix ores; none is fine, the
+    pack builds alone. Every band has them, so finding none means the host table changed shape."""
     monolith = os.path.normpath(os.path.join(root(), "..", MONOLITH))
     if not os.path.isdir(monolith):
         return []
-    dirs = [os.path.join(monolith, band) for band in sorted(os.listdir(monolith))
-            if matrix_hosts(os.path.join(monolith, band))]
+    dirs = []
+    for band in sorted(os.listdir(monolith)):
+        src = os.path.join(monolith, band, "common", "src")
+        for era in sorted(os.listdir(src)) if os.path.isdir(src) else []:
+            if matrix_hosts(os.path.join(src, era)):
+                dirs.append(os.path.join(src, era))
     if not dirs:
         sys.exit(f"no placed(...) stones in any {MONOLITH} host table; the pattern no longer matches it")
     return dirs
 
 
-MATRIX_SUFFIX_PREFIXES = ("tr_", "ep_", "occ_", "sg_", "sgear_", "powah_", "ma_")
+MATRIX_SUFFIX_PREFIXES = ("tr_", "ep_", "occ_", "sg_", "sgear_", "powah_", "ma_", "cb_", "dmek_", "tfmg_",
+                          "iaf_", "expores_", "things_", "er_", "mi_", "cna_")
 
 
 def matrix_key(family):
@@ -946,8 +976,7 @@ def matrix_block_targets(family):
     if ore is None:
         return []
     for tree in matrix_dirs():
-        states = os.path.join(tree, "common", "src", "main", "resources", "assets", MOD_NAMESPACE,
-                              "blockstates")
+        states = os.path.join(tree, "resources", "assets", MOD_NAMESPACE, "blockstates")
         if not os.path.isdir(states):
             continue
         for host in matrix_hosts(tree):
