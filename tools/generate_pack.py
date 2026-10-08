@@ -876,19 +876,33 @@ def mod_block_targets(family):
 # Matrix, until it was folded in). Their ids are <stonemod>_<stone>_<ore>_ore in the mod's own namespace
 # (seamlessores:blockus_limestone_iron_ore): the stone mod is part of the name because Create and
 # Blockus both have a limestone, and the ore part is the full ore name, so nether gold is spelled out
-# and needs no host split. Their hosts are read from the mod's own Matrix host table, the same file
-# its generator parses, so a stone added there reaches the pack on the next build. Only 26.x has them.
-MATRIX_HOST_TABLE = ("common", "src", "main", "java", "com", "chillpavz", "seamlessores", "matrix",
-                     "content", "HostStone.java")
+# and needs no host split. Their hosts are read from the mod's own host table (its placed(...) stones),
+# the same file its generator parses, so a stone added there reaches the pack on the next build. Only
+# 26.x has them.
+MATRIX_HOST_TABLE = ("common", "src", "main", "java", "com", "chillpavz", "seamlessores", "content",
+                     "HostStone.java")
+
+
+def matrix_hosts(tree):
+    """The stones other mods place, as id prefixes (blockus_limestone), from one band's host table."""
+    table = os.path.join(tree, *MATRIX_HOST_TABLE)
+    if not os.path.isfile(table):
+        return set()
+    with open(table, encoding="utf-8") as handle:
+        return {f"{mod}_{path}" for mod, path in re.findall(r'placed\("(\w+)", "(\w+)"', handle.read())}
 
 
 def matrix_dirs():
-    """The mod's band folders that carry the Matrix ores; none is fine, the pack builds alone."""
+    """The mod's band folders that carry the Matrix ores; none is fine, the pack builds alone. The
+    monolith's 26.x band has them, so finding none there means the host table changed shape."""
     monolith = os.path.normpath(os.path.join(root(), "..", MONOLITH))
     if not os.path.isdir(monolith):
         return []
-    return [os.path.join(monolith, band) for band in sorted(os.listdir(monolith))
-            if os.path.isfile(os.path.join(monolith, band, *MATRIX_HOST_TABLE))]
+    dirs = [os.path.join(monolith, band) for band in sorted(os.listdir(monolith))
+            if matrix_hosts(os.path.join(monolith, band))]
+    if not dirs:
+        sys.exit(f"no placed(...) stones in any {MONOLITH} host table; the pattern no longer matches it")
+    return dirs
 
 
 MATRIX_SUFFIX_PREFIXES = ("tr_", "ep_", "occ_", "sg_", "sgear_", "powah_", "ma_")
@@ -924,17 +938,11 @@ def matrix_block_targets(family):
     if ore is None:
         return []
     for tree in matrix_dirs():
-        table = os.path.join(tree, *MATRIX_HOST_TABLE)
         states = os.path.join(tree, "common", "src", "main", "resources", "assets", MOD_NAMESPACE,
                               "blockstates")
-        if not (os.path.isfile(table) and os.path.isdir(states)):
+        if not os.path.isdir(states):
             continue
-        with open(table, encoding="utf-8") as handle:
-            hosts = {f"{mod}_{path}" for mod, path in
-                     re.findall(r'new HostStone\("(\w+)", "(\w+)"', handle.read())}
-        if not hosts:
-            sys.exit(f"{table}: no hosts found; the pattern no longer matches the host table")
-        for host in hosts:
+        for host in matrix_hosts(tree):
             if os.path.isfile(os.path.join(states, f"{host}_{ore}_ore.json")):
                 found.add(f"{MOD_NAMESPACE}:{host}_{ore}_ore")
     return sorted(found)
