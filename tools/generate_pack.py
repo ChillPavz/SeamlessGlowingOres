@@ -2,12 +2,13 @@
 """
 Builds the Seamless Glowing Ores resource pack(s) in FUSION format.
 
-    py -3.14 tools/generate_pack.py                    # build all four files
+    py -3.14 tools/generate_pack.py                    # build all eight files
     py -3.14 tools/generate_pack.py --pack animated    # only the animated pair
     py -3.14 tools/generate_pack.py --families diamond # only the named families (a pilot)
     py -3.14 tools/generate_pack.py --list             # print coverage and exit
 
-Four files from one family table: SeamlessGlowingOres-{Glow,Border}, still, and
+Eight files from one family table: SeamlessGlowingOres-{Glow,Border}, still,
+SeamlessSubtleOres-{Glow,Border} at half strength, SeamlessPulsingOres-{Glow,Border} breathing, and
 SeamlessAnimatedOres-{Glow,Border}, the same art with a GLINT: every ore layer is a generated
 animation in which a band of light grows out across the ore's own speck pixels, then rests. Nothing
 new is drawn; the frames are derived from the overlay art at build time (see glint_frames).
@@ -77,17 +78,44 @@ PACKS = {
                     zip="SeamlessGlowingOres", glint=False),
     "animated": dict(name="Seamless Animated Ores", namespace="seamlessanimatedores",
                      zip="SeamlessAnimatedOres", glint=True),
+    # SUBTLE: the same layers at part strength. The emissive layer is drawn TRANSLUCENT with its alpha
+    # scaled, so in the dark it shows a share of full bright, and in daylight (the ore beneath already
+    # lit) it looks like the ore. Fusion's element `light_emission` was the first plan, but its appended
+    # layers drop the level on the way to the quad (spike, 16 Oct 2026: L 9/11/12 rendered unlit on 26.3
+    # Fabric and NeoForge, while vanilla's own light_emission on a plain model lights the block).
+    "subtle": dict(name="Seamless Subtle Ores", namespace="seamlesssubtleores",
+                   zip="SeamlessSubtleOres", glint=False, effect="subtle"),
+    # PULSING: the glint pack's machinery (an animated plate, and pieced border sheets that animate
+    # with it), with frames whose ALPHA breathes between a floor and full on a sine, drawn translucent.
+    # In daylight the ore beneath is already lit, so it reads as the ore; in the dark it breathes.
+    # Never `interpolate` (it crashes Fusion sprites): stored steps played up and down instead.
+    "pulsing": dict(name="Seamless Pulsing Ores", namespace="seamlesspulsingores",
+                    zip="SeamlessPulsingOres", glint=True, effect="pulse"),
 }
 PACK = "glowing"
 GLINT = False
+EFFECT = None
+# The Subtle pack's strength: the alpha its emissive layers are drawn at, in percent. Owner's pick from
+# the spike's shots (35, 50, 65).
+SUBTLE_ALPHA = int(os.environ.get("SGO_SUBTLE_ALPHA", "50"))
 
 
 def use_pack(key):
-    global PACK, PACK_NAME, PACK_NAMESPACE, GLINT
+    global PACK, PACK_NAME, PACK_NAMESPACE, GLINT, EFFECT
     PACK = key
     PACK_NAME = PACKS[key]["name"]
     PACK_NAMESPACE = PACKS[key]["namespace"]
     GLINT = PACKS[key]["glint"]
+    EFFECT = PACKS[key].get("effect")
+
+
+def faded(path):
+    """Scale a written texture's alpha to SUBTLE_ALPHA percent, in place (the Subtle pack)."""
+    from PIL import Image
+    image = Image.open(path).convert("RGBA")
+    alpha = image.getchannel("A").point(lambda a: a * SUBTLE_ALPHA // 100)
+    image.putalpha(alpha)
+    image.save(path)
 
 # pack_format is 15, NOT 26.2's own 88, and that is deliberate.
 #
@@ -338,9 +366,14 @@ THIRD_PARTY = {
         "uraninite_dense": (("uraninite_overlay_dense", "uraninite_overlay_dense_border"),
                             ["uraninite_ore_dense", "deepslate_uraninite_ore_dense"]),
     }),
-    # Ice and Fire's sapphire has no deepslate form: its feature targets stone_ore_replaceables only.
-    "iaf": ("ice and fire", "iceandfire", {
-        "silver":   ("silver", ["silver_ore", "deepslate_silver_ore"]),
+    # Ice and Fire Community Edition (the maintained fork, same ids): the owner's art, drawn from CE's own
+    # specks (16 Oct 2026). CE redrew silver and sapphire; its deepslate silver has specks of its own, so
+    # it is its own family, and so are the mod's deepslate-tier silver variants (tuff, deep blackstone,
+    # black argillite), which carry those specks. Sapphire has no deepslate form: its feature targets
+    # stone_ore_replaceables only.
+    "iaf": ("ice and fire ce", "iceandfire", {
+        "silver":   ("silver", ["silver_ore"]),
+        "deepslate_silver": ("deepslate_silver", ["deepslate_silver_ore"]),
         "sapphire": ("sapphire", ["sapphire_ore"]),
     }),
     "expores": ("exp ores", "expores", {
@@ -508,6 +541,7 @@ SO_SUFFIX.update({
     "powah_uraninite_poor": "uraninite_poor",
     "powah_uraninite_dense": "uraninite_dense",
     "iaf_silver": "iceandfire_silver",               # prefixed: Silent's Gems has a silver too
+    "iaf_deepslate_silver": "iceandfire_silver",     # the same blocks, on the deepslate-tier hosts
     "iaf_sapphire": "iceandfire_sapphire",
     "expores_experience": "experience",
     "expores_nether_experience": "experience",
@@ -539,6 +573,8 @@ SO_HOSTS.update({"cb_fire_stone": "overworld", "cb_nether_fire_stone": "nether",
                  "tr_cinnabar": "nether",
                  "er_benitoite": "nether", "sg_opal": "overworld"})
 SO_HOSTS.update({"expores_experience": "overworld", "expores_nether_experience": "nether"})
+# Ice and Fire CE's silver: the deepslate-tier hosts take the deepslate specks (OreType's deepslate overlay).
+SO_HOSTS.update({"iaf_silver": "shallow", "iaf_deepslate_silver": "deep"})
 # Mekanism's own ore IS supported by the mod from 4.1.0 (its mekanism:ore config turned out to be a
 # record with one target list, which is exactly what ForeignOreTargets handles), and the mod prefixes
 # every variant mek_<ore>, so family key and block suffix are the same string and these need no
@@ -586,6 +622,9 @@ for _g in _SG_GEMS:
 # fire stone ore, glowed by the overworld family's art).
 FAMILIES["expores_nether_experience"]["matrix"] = "nether_experience"
 FAMILIES["cb_nether_fire_stone"]["matrix"] = None
+# Ice and Fire CE's silver: one Matrix key, split between the two families by the host's tier.
+FAMILIES["iaf_deepslate_silver"]["matrix"] = "iceandfire_silver"
+FAMILIES["iaf_deepslate_silver"]["overlay"] = "iceandfire_deepslate_silver"
 # Malum: the overlay keys of the mod (brilliance is drawn as brilliant), and no variant of cthonic gold.
 for _o, _key in (("soulstone", "soulstone"), ("natural_quartz", "natural_quartz"), ("brilliance", "brilliant"),
                  ("blazing_quartz", "blazing_quartz")):
@@ -693,10 +732,47 @@ GLINT_PEAK = 0.65           # fraction of the way to white at the band's centre 
 GLINT_SHAPE = "diamond"
 
 
+# THE PULSE (Pulsing pack). PULSE_STEPS stored frames from PULSE_FLOOR to full alpha on a half cosine,
+# played up and back down through the frame list (an index repeats for free): 2 x (steps - 1) entries
+# of PULSE_FRAMETIME ticks, 16 x 4 = 64 ticks, 3.2 s a breath. Every ore pulses in step (texture
+# animation is global). The floor keeps an ore from vanishing mid-cycle (owner's call, 15 Oct 2026).
+PULSE_STEPS = 9
+PULSE_FLOOR = 0.2
+PULSE_FRAMETIME = 4
+
+
+def pulse_frames(image):
+    """The image at each pulse step's alpha, faintest first. Every frame is the image's own size."""
+    import math
+    frames = []
+    for k in range(PULSE_STEPS):
+        level = PULSE_FLOOR + (1 - PULSE_FLOOR) * (1 - math.cos(math.pi * k / (PULSE_STEPS - 1))) / 2
+        tile = image.copy()
+        tile.putalpha(image.getchannel("A").point(lambda a, level=level: round(a * level)))
+        frames.append(tile)
+    return frames
+
+
+PULSE_ANIMATION = {"frametime": PULSE_FRAMETIME,
+                   "frames": list(range(PULSE_STEPS)) + list(range(PULSE_STEPS - 2, 0, -1))}
+
+
+def glint_animation():
+    """The animation section of a generated layer: the glint's, or in the Pulsing pack the pulse's."""
+    return PULSE_ANIMATION if EFFECT == "pulse" else GLINT_ANIMATION
+
+
+def generated_render_type(render_type):
+    """A generated layer's render type: translucent where its alpha varies (Subtle, Pulsing)."""
+    return "translucent" if EFFECT in ("subtle", "pulse") else render_type
+
+
 def glint_frames(image):
-    """The plain image, then every sweep frame. Every frame is the image's own size."""
+    """The plain image, then every sweep frame (the Pulsing pack: its pulse steps). Each the image's size."""
     if frame_count(image) != 1 or image.width != image.height:
         sys.exit("glint_frames needs a single square frame; an already animated overlay keeps its own")
+    if EFFECT == "pulse":
+        return pulse_frames(image)
     size = image.width
     width = GLINT_HALF_WIDTH * size / 16
     middle = (size - 1) / 2
@@ -806,6 +882,8 @@ def layout():
 # swept into the vanilla `gold` family, whose prefix would come out as the non-host "basalt_midas".
 MOD_HOSTS = {"granite", "diorite", "andesite", "tuff", "dripstone", "cinnabar", "basalt", "blackstone"}
 NETHER_HOSTS = {"basalt", "blackstone"}
+# The game's own rock the mod gives the DEEPSLATE tier: an ore with deepslate art of its own wears it there.
+DEEP_HOSTS = {"tuff"}
 
 
 MONOLITH = "seamlessores-monolith"
@@ -888,6 +966,10 @@ def mod_block_targets(family):
         allowed = lambda host: host in NETHER_HOSTS          # noqa: E731
     elif hosts == "overworld":
         allowed = lambda host: host not in NETHER_HOSTS      # noqa: E731
+    elif hosts == "deep":
+        allowed = lambda host: host in DEEP_HOSTS            # noqa: E731
+    elif hosts == "shallow":
+        allowed = lambda host: host not in NETHER_HOSTS and host not in DEEP_HOSTS   # noqa: E731
     else:
         allowed = lambda host: True                          # noqa: E731
 
@@ -923,6 +1005,16 @@ def matrix_hosts(tree):
         return set()
     with open(table, encoding="utf-8") as handle:
         return {f"{mod}_{path}" for mod, path in re.findall(r'placed\("(\w+)", "(\w+)"', handle.read())}
+
+
+def matrix_host_tiers(tree):
+    """{stone id prefix: its OreTier, lower case} from one build's host table."""
+    table = os.path.join(tree, *MATRIX_HOST_TABLE)
+    if not os.path.isfile(table):
+        return {}
+    with open(table, encoding="utf-8") as handle:
+        return {f"{mod}_{path}": tier.lower() for mod, path, tier in
+                re.findall(r'placed\("(\w+)", "(\w+)",\s*OreTier\.(\w+)', handle.read())}
 
 
 def matrix_dirs():
@@ -964,9 +1056,11 @@ def check_matrix_keys():
     seen = {}
     for family in FAMILIES:
         key = matrix_key(family)
-        if key is not None and key in seen:
-            sys.exit(f"families {seen[key]} and {family} both claim Matrix ore key {key}")
-        seen[key] = family
+        # A key split between a "deep" and a "shallow" family takes each stone once.
+        tier = FAMILIES[family].get("hosts") if FAMILIES[family].get("hosts") in ("deep", "shallow") else ""
+        if key is not None and (key, tier) in seen:
+            sys.exit(f"families {seen[(key, tier)]} and {family} both claim Matrix ore key {key}")
+        seen[(key, tier)] = family
 
 
 def matrix_block_targets(family):
@@ -975,11 +1069,16 @@ def matrix_block_targets(family):
     found = set()
     if ore is None:
         return []
+    # A family split by tier (Ice and Fire CE's silver) takes only the stones of its own tier.
+    tier_filter = FAMILIES[family].get("hosts") if FAMILIES[family].get("hosts") in ("deep", "shallow") else None
     for tree in matrix_dirs():
         states = os.path.join(tree, "resources", "assets", MOD_NAMESPACE, "blockstates")
         if not os.path.isdir(states):
             continue
+        tiers = matrix_host_tiers(tree)
         for host in matrix_hosts(tree):
+            if tier_filter and (tiers.get(host) == "deepslate") != (tier_filter == "deep"):
+                continue
             if os.path.isfile(os.path.join(states, f"{host}_{ore}_ore.json")):
                 found.add(f"{MOD_NAMESPACE}:{host}_{ore}_ore")
     return sorted(found)
@@ -1373,12 +1472,12 @@ def assert_owns_only_its_namespace(out_dir):
 
 def write_plain_glow(source, target):
     """A plain emissive texture and its mcmeta: the art as drawn, or in the animated pack its glint."""
-    payload = {"fusion": {"emissive": True, "render_type": "cutout"}}
+    payload = {"fusion": {"emissive": True, "render_type": generated_render_type("cutout") if GLINT else "cutout"}}
     check_fusion_keys(payload["fusion"])
     if GLINT:
         from PIL import Image
         glint_strip(Image.open(source).convert("RGBA")).save(target)
-        payload["animation"] = GLINT_ANIMATION
+        payload["animation"] = glint_animation()
     else:
         shutil.copyfile(source, target)
     write_json(f"{target}.mcmeta", payload)
@@ -1578,7 +1677,7 @@ def build(variant, spec):
         glint = None
         if GLINT and overlay_art is not None and animation is None and frame_count(overlay_art) == 1:
             glint = glint_strip(overlay_art)
-            animation = GLINT_ANIMATION
+            animation = glint_animation()
         frames = 1 if border_only else frame_count(glint or overlay_art)
         # The border glints wherever the ore does, and on a border-only family (the salt outline) too.
         border_glint = GLINT and (glint is not None or border_only)
@@ -1617,7 +1716,11 @@ def build(variant, spec):
                     glint_strip(era_art).save(os.path.join(era_dir, f"{texture}.png"))
                 else:
                     shutil.copyfile(art_path(family, "overlays", legacy), os.path.join(era_dir, f"{texture}.png"))
-            meta = {"emissive": True, "render_type": render_type}
+            if EFFECT == "subtle":
+                for era_dir, _legacy in eras:
+                    faded(os.path.join(era_dir, f"{texture}.png"))
+            meta = {"emissive": True, "render_type": generated_render_type(render_type)
+                    if EFFECT == "subtle" or glint is not None else render_type}
             check_fusion_keys(meta)
             payload = {"fusion": meta}
             if animation:
@@ -1626,13 +1729,14 @@ def build(variant, spec):
                 payload["animation"] = animation
             for era_dir, _legacy in eras:
                 write_json(os.path.join(era_dir, f"{texture}.png.mcmeta"), payload)
-            write_json(os.path.join(out_dir, "assets", PACK_NAMESPACE, "models", "block",
-                                    f"{texture}.json"), {
+            glow_model = {
                 "loader": "fusion:model",
                 "type": "base",
                 "parent": "block/cube_all",
                 "textures": {"all": f"{PACK_NAMESPACE}:block/{texture}"},
-            })
+            }
+            write_json(os.path.join(out_dir, "assets", PACK_NAMESPACE, "models", "block",
+                                    f"{texture}.json"), glow_model)
             appended.append(f"{PACK_NAMESPACE}:block/{texture}")
 
         # --- layer 2: the connecting border ---------------------------------------------------
@@ -1665,10 +1769,15 @@ def build(variant, spec):
                 # is_same_block - i.e. each host stone's variant bordered only against itself.
                 "connections": connection_predicates(family),
             }
+            if EFFECT == "subtle":
+                meta["render_type"] = "translucent"
+                for era_dir, _legacy in eras:
+                    faded(os.path.join(era_dir, f"{texture}.png"))
             check_fusion_keys(meta)
             sheet_payload = {"fusion": meta}
             if border_glint:
-                sheet_payload["animation"] = GLINT_ANIMATION
+                sheet_payload["animation"] = glint_animation()
+                meta["render_type"] = generated_render_type(meta["render_type"])
             for era_dir, _legacy in eras:
                 write_json(os.path.join(era_dir, f"{texture}.png.mcmeta"), sheet_payload)
             border_model = {

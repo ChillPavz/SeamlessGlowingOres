@@ -16,7 +16,7 @@ in `tools/` is not.
 ## Building
 
 ```
-py -3.14 tools/generate_pack.py                     # builds all four zips into build/
+py -3.14 tools/generate_pack.py                     # builds all eight zips into build/
 py -3.14 tools/generate_pack.py --pack animated     # only the animated pair
 py -3.14 tools/generate_pack.py --families diamond  # only the named families, for a pilot
 py -3.14 tools/generate_pack.py --list              # prints coverage and exits
@@ -30,6 +30,10 @@ Pillow is required and lives on the 3.14 install. Output:
 | `build/SeamlessGlowingOres-Border.zip` | Emissive plus the 47 tile connected outline |
 | `build/SeamlessAnimatedOres-Glow.zip` | Emissive, with the glint |
 | `build/SeamlessAnimatedOres-Border.zip` | Emissive plus a connected outline, both with the glint |
+| `build/SeamlessSubtleOres-Glow.zip` | Emissive at half strength |
+| `build/SeamlessSubtleOres-Border.zip` | Emissive plus the connected outline, both at half strength |
+| `build/SeamlessPulsingOres-Glow.zip` | Emissive, breathing |
+| `build/SeamlessPulsingOres-Border.zip` | Emissive plus a connected outline, both breathing |
 
 `build/` holds whatever was built last, and a `--families` pilot leaves a partial zip there. Build
 in full before handing a zip to anyone.
@@ -205,6 +209,22 @@ own face by view angle, so whole runs of outline vanish as the camera moves; `li
 border cube by `BORDER_LIFT` (0.003 of a block) on every side, which clears it. Ancient debris and the
 alpine salt glint as well.
 
+## The subtle and pulsing pairs
+
+**Subtle** (`seamlesssubtleores`): every generated layer drawn `translucent` with its alpha scaled to
+`SUBTLE_ALPHA` (50, the owner's pick from 35, 50 and 65), still emissive. In the dark the ore shows half
+of full bright; in daylight the ore beneath is lit anyway. Fusion's element `light_emission` was tried
+first: its appended layers drop the level, and L 9, 11 and 12 rendered unlit on 26.3 Fabric and NeoForge
+while the game's own `light_emission` on a plain model lit the block.
+
+**Pulsing** (`seamlesspulsingores`): the animated pair's machinery with `pulse_frames()` in place of the
+glint: `PULSE_STEPS` (9) stored frames from `PULSE_FLOOR` (20%) to full alpha on a half cosine, played up
+and back down through the frame list at `PULSE_FRAMETIME` (4 ticks): 3.2 s a breath, every ore in step.
+Never `interpolate`. Families whose mod animates the ore keep that animation at full strength.
+
+Measured on 26.3 NeoForge, Border variants, process memory over no pack: Glowing +44 MB, Subtle +91 MB,
+Pulsing +208 MB. Use one of the packs at a time: two stacked append two layers to every ore.
+
 ## Mythic Metals
 
 Its 21 families are built and shipped, with ids read out of `mythicmetals-0.25.3+1.21.4.jar`. The mod
@@ -217,6 +237,9 @@ one file can carry them: on 26.2 they are simply inert rather than an error.
 The ore overlays are derived from Minecraft's own textures and remain Mojang's property. Zinc is
 derived from Create, which is CC0 and MIT licensed. Mythic Upgrades and Mythic Metals are both MIT
 licensed.
+
+The Ice and Fire overlays are drawn from [Ice and Fire Community Edition](https://www.curseforge.com/minecraft/mc-mods/ice-and-fire-community-edition)'s
+ore textures (LGPL-3.0).
 
 The Immersive Engineering overlays (aluminum, lead, nickel, silver and uranium) are derived from
 [Immersive Engineering](https://modrinth.com/mod/immersiveengineering)'s ore textures and are used
