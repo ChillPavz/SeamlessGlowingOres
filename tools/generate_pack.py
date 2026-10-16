@@ -2,14 +2,15 @@
 """
 Builds the Seamless Glowing Ores resource pack(s) in FUSION format.
 
-    py -3.14 tools/generate_pack.py                    # build all eight files
+    py -3.14 tools/generate_pack.py                    # build the six published files
+    py -3.14 tools/generate_pack.py --pack pulsing     # the unpublished Pulsing pair, on request
     py -3.14 tools/generate_pack.py --pack animated    # only the animated pair
     py -3.14 tools/generate_pack.py --families diamond # only the named families (a pilot)
     py -3.14 tools/generate_pack.py --list             # print coverage and exit
 
-Eight files from one family table: SeamlessGlowingOres-{Glow,Border}, still,
-SeamlessSubtleOres-{Glow,Border} at half strength, SeamlessPulsingOres-{Glow,Border} breathing, and
-SeamlessAnimatedOres-{Glow,Border}, the same art with a GLINT: every ore layer is a generated
+Six published files from one family table: SeamlessGlowingOres-{Glow,Border}, still,
+SeamlessSubtleOres-{Glow,Border} at half strength, and SeamlessAnimatedOres-{Glow,Border}, the same art
+with a GLINT (plus SeamlessPulsingOres-{Glow,Border}, breathing, kept but not published): every ore layer is a generated
 animation in which a band of light grows out across the ore's own speck pixels, then rests. Nothing
 new is drawn; the frames are derived from the overlay art at build time (see glint_frames).
 
@@ -89,8 +90,10 @@ PACKS = {
     # with it), with frames whose ALPHA breathes between a floor and full on a sine, drawn translucent.
     # In daylight the ore beneath is already lit, so it reads as the ore; in the dark it breathes.
     # Never `interpolate` (it crashes Fusion sprites): stored steps played up and down instead.
+    # NOT PUBLISHED (owner, 16 Oct 2026: tried in game, not kept for now; more steps may be worth a
+    # second look, at a texture memory cost). Built only on request: --pack pulsing.
     "pulsing": dict(name="Seamless Pulsing Ores", namespace="seamlesspulsingores",
-                    zip="SeamlessPulsingOres", glint=True, effect="pulse"),
+                    zip="SeamlessPulsingOres", glint=True, effect="pulse", publish=False),
 }
 PACK = "glowing"
 GLINT = False
@@ -1895,7 +1898,7 @@ def main():
     warn_if_overlays_drifted()
     verify_salt_against_meadow()
     spec = layout()
-    for pack in ([args.pack] if args.pack else PACKS):
+    for pack in ([args.pack] if args.pack else [k for k, v in PACKS.items() if v.get("publish", True)]):
         use_pack(pack)
         print(f"== {PACK_NAME}")
         build("glow", spec)

@@ -16,7 +16,7 @@ in `tools/` is not.
 ## Building
 
 ```
-py -3.14 tools/generate_pack.py                     # builds all eight zips into build/
+py -3.14 tools/generate_pack.py                     # builds the six published zips into build/
 py -3.14 tools/generate_pack.py --pack animated     # only the animated pair
 py -3.14 tools/generate_pack.py --families diamond  # only the named families, for a pilot
 py -3.14 tools/generate_pack.py --list              # prints coverage and exits
@@ -32,8 +32,6 @@ Pillow is required and lives on the 3.14 install. Output:
 | `build/SeamlessAnimatedOres-Border.zip` | Emissive plus a connected outline, both with the glint |
 | `build/SeamlessSubtleOres-Glow.zip` | Emissive at half strength |
 | `build/SeamlessSubtleOres-Border.zip` | Emissive plus the connected outline, both at half strength |
-| `build/SeamlessPulsingOres-Glow.zip` | Emissive, breathing |
-| `build/SeamlessPulsingOres-Border.zip` | Emissive plus a connected outline, both breathing |
 
 `build/` holds whatever was built last, and a `--families` pilot leaves a partial zip there. Build
 in full before handing a zip to anyone.
@@ -217,7 +215,8 @@ of full bright; in daylight the ore beneath is lit anyway. Fusion's element `lig
 first: its appended layers drop the level, and L 9, 11 and 12 rendered unlit on 26.3 Fabric and NeoForge
 while the game's own `light_emission` on a plain model lit the block.
 
-**Pulsing** (`seamlesspulsingores`): the animated pair's machinery with `pulse_frames()` in place of the
+**Pulsing** (`seamlesspulsingores`), NOT PUBLISHED (owner, 16 Oct 2026: not kept for now; more steps
+may be worth trying, at a memory cost). Built only with `--pack pulsing`. The animated pair's machinery with `pulse_frames()` in place of the
 glint: `PULSE_STEPS` (9) stored frames from `PULSE_FLOOR` (20%) to full alpha on a half cosine, played up
 and back down through the frame list at `PULSE_FRAMETIME` (4 ticks): 3.2 s a breath, every ore in step.
 Never `interpolate`. Families whose mod animates the ore keep that animation at full strength.
