@@ -238,7 +238,7 @@ The ore overlays are derived from Minecraft's own textures and remain Mojang's p
 derived from Create, which is CC0 and MIT licensed. Mythic Upgrades and Mythic Metals are both MIT
 licensed.
 
-The Ice and Fire overlays are drawn from [Ice and Fire Community Edition](https://www.curseforge.com/minecraft/mc-mods/ice-and-fire-community-edition)'s
+The Ice and Fire overlays are drawn from [Ice and Fire Community Edition](https://www.curseforge.com/minecraft/mc-mods/iceandfire-ce)'s
 ore textures (LGPL-3.0).
 
 The Immersive Engineering overlays (aluminum, lead, nickel, silver and uranium) are derived from
