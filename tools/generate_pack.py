@@ -1010,6 +1010,22 @@ def matrix_hosts(tree):
         return {f"{mod}_{path}" for mod, path in re.findall(r'placed\("(\w+)", "(\w+)"', handle.read())}
 
 
+_RETIRED = None
+
+
+def retired_ids():
+    """Seamless Ores' retired ids (tools/<band>/retired_ids.json in the monolith): placeholders drawn as
+    their plain stone, which turn into it, so they never get a glow."""
+    global _RETIRED
+    if _RETIRED is None:
+        import glob
+        monolith = os.path.normpath(os.path.join(root(), "..", MONOLITH))
+        _RETIRED = {f"{MOD_NAMESPACE}:{row['id']}"
+                    for path in glob.glob(os.path.join(monolith, "**", "tools", "**", "retired_ids.json"), recursive=True)
+                    for row in json.load(open(path, encoding="utf-8"))["retired"]}
+    return _RETIRED
+
+
 def matrix_host_tiers(tree):
     """{stone id prefix: its OreTier, lower case} from one build's host table."""
     table = os.path.join(tree, *MATRIX_HOST_TABLE)
@@ -1088,7 +1104,8 @@ def matrix_block_targets(family):
 
 
 def family_targets(family):
-    return list(FAMILIES[family]["targets"]) + mod_block_targets(family) + matrix_block_targets(family)
+    ours = [t for t in mod_block_targets(family) + matrix_block_targets(family) if t not in retired_ids()]
+    return list(FAMILIES[family]["targets"]) + ours
 
 
 def target_block(target):
