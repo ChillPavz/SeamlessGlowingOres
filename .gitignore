@@ -20,7 +20,10 @@ assets/ore/
 assets/ingots/
 assets/stone/
 assets/scripts/
-assets/overlays/cobblemon new/
+assets/overlays/published/cobblemon new/
+# Art not published yet: needs permission, or is being drawn and reviewed (owner, 21 Oct 2026).
+assets/overlays/permission/
+assets/overlays/no permission/
 assets/whole_block/*
 !assets/whole_block/ancient_debris_side.png
 !assets/whole_block/ancient_debris_top.png

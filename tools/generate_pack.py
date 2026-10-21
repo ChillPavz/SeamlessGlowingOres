@@ -711,7 +711,7 @@ ANIMATED = {
 # wrong. The owner's overlays carry the mod's own mcmeta beside them; read it rather than retype it.
 for _er in ("yellorite", "anglesite", "benitoite"):
     _meta = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                         "assets", "overlays", "extreme reactors", f"{_er}_overlay.png.mcmeta")
+                         "assets", "overlays", "published", "extreme reactors", f"{_er}_overlay.png.mcmeta")
     with open(_meta, encoding="utf-8") as _handle:
         ANIMATED[f"er_{_er}"] = {k: v for k, v in json.load(_handle)["animation"].items()
                                  if k in ("frametime", "frames")}
@@ -863,7 +863,9 @@ def root():
 
 def art_path(family, kind, legacy=False):
     """
-    kind is 'overlays' or 'borders'; both are laid out as assets/<kind>/<mod>/<family>_<x>.png.
+    kind is 'overlays' or 'borders', laid out as assets/<kind>/<mod>/<family>_<x>.png, except that the
+    overlays of published mods sit in assets/overlays/published/<mod>/ (the owner's layout, 21 Oct 2026:
+    published, permission and no permission folders; only published art is ever built).
 
     A family may override either with `overlay_file` / `border_file`, which is how a split family
     reuses its sibling's art. See the split families above. legacy=True picks the old drawing of a
@@ -873,7 +875,12 @@ def art_path(family, kind, legacy=False):
     name = FAMILIES[family].get(f"{stem}_file", f"{family}_{stem}")
     if legacy:
         name = LEGACY_ART[family][0 if kind == "overlays" else 1]
-    return os.path.join(root(), "assets", kind, FAMILIES[family]["art"], f"{name}.png")
+    return os.path.join(art_dir(kind, FAMILIES[family]["art"]), f"{name}.png")
+
+
+def art_dir(kind, art):
+    """The folder holding one mod's art of this kind (see art_path)."""
+    return os.path.join(root(), "assets", kind, *(("published",) if kind == "overlays" else ()), art)
 
 
 def layout():
@@ -1606,7 +1613,7 @@ def verify_salt_against_meadow():
             for model, art in entries:
                 texture = Image.open(io.BytesIO(z.read(
                     f"assets/meadow/textures/block/{model.split('/')[-1]}.png"))).convert("RGBA")
-                overlay = Image.open(os.path.join(root(), "assets", "overlays", "meadow", f"{art}.png")).convert("RGBA")
+                overlay = Image.open(os.path.join(art_dir("overlays", "meadow"), f"{art}.png")).convert("RGBA")
                 opaque = [(x, y) for y in range(16) for x in range(16) if overlay.getpixel((x, y))[3]]
                 exact = sum(1 for p in opaque if overlay.getpixel(p)[:3] == texture.getpixel(p)[:3])
                 if exact != len(opaque):
@@ -1626,7 +1633,7 @@ def build_salt_glow(out_dir, tex_dir, current_tex_dir):
         os.makedirs(tex_dirs[era], exist_ok=True)
         for i, (meadow_model, art) in enumerate(entries):
             texture = f"meadow_alpine_salt_{i}_overlay"
-            source = os.path.join(root(), "assets", "overlays", "meadow", f"{art}.png")
+            source = os.path.join(art_dir("overlays", "meadow"), f"{art}.png")
             if not os.path.exists(source):
                 sys.exit(f"Missing art: {source}")
             write_plain_glow(source, os.path.join(tex_dirs[era], f"{texture}.png"))
