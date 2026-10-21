@@ -181,7 +181,13 @@ FAMILIES = {
     "gold":     dict(art=VANILLA, targets=["minecraft:gold_ore", "minecraft:deepslate_gold_ore"],
                     hosts="overworld"),
     "lapis":    dict(art=VANILLA, targets=["minecraft:lapis_ore", "minecraft:deepslate_lapis_ore"]),
-    "diamond":  dict(art=VANILLA, targets=["minecraft:diamond_ore", "minecraft:deepslate_diamond_ore"]),
+    # Born in Chaos' infected diamond is a trap dressed as diamond ore (its models draw the game's own
+    # diamond textures, on 1.20.1 and 1.21.1 alike), so it glows and connects as diamond: the disguise
+    # holds. Seamless Ores' tuff variant is <host>_infected_diamond_ore, hence the extra suffix.
+    "diamond":  dict(art=VANILLA, targets=["minecraft:diamond_ore", "minecraft:deepslate_diamond_ore",
+                                           "born_in_chaos_v1:infected_diamond_ore",
+                                           "born_in_chaos_v1:infected_deepslate_diamond_ore"],
+                     also_suffixes=["infected_diamond"]),
     "emerald":  dict(art=VANILLA, targets=["minecraft:emerald_ore", "minecraft:deepslate_emerald_ore"]),
     "redstone": dict(art=VANILLA, targets=["minecraft:redstone_ore", "minecraft:deepslate_redstone_ore"]),
     # Nether gold is its own family: different art, different hosts, and it never touches the
@@ -977,16 +983,18 @@ def mod_block_targets(family):
         allowed = lambda host: True                          # noqa: E731
 
     found = set()
-    for states in mod_asset_dirs("blockstates"):
-        for name in sorted(os.listdir(states)):
-            if not name.endswith(".json"):
-                continue
-            block = name[:-5]
-            if not block.endswith(f"_{suffix}_ore"):
-                continue
-            host = block[: -len(f"_{suffix}_ore")]
-            if host in MOD_HOSTS and allowed(host):
-                found.add(f"{MOD_NAMESPACE}:{block}")
+    # `also_suffixes`: other ores of ours that glow as this family (Born in Chaos' infected diamond).
+    for suffix in [suffix] + FAMILIES[family].get("also_suffixes", []):
+        for states in mod_asset_dirs("blockstates"):
+            for name in sorted(os.listdir(states)):
+                if not name.endswith(".json"):
+                    continue
+                block = name[:-5]
+                if not block.endswith(f"_{suffix}_ore"):
+                    continue
+                host = block[: -len(f"_{suffix}_ore")]
+                if host in MOD_HOSTS and allowed(host):
+                    found.add(f"{MOD_NAMESPACE}:{block}")
     return sorted(found)
 
 

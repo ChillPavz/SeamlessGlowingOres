@@ -17,6 +17,7 @@ CHANGELOG-*.md
 # scratch scripts, and reference copies of vanilla textures. Only the whole-block art it
 # does read is tracked.
 assets/ore/
+assets/ingots/
 assets/stone/
 assets/scripts/
 assets/overlays/cobblemon new/
