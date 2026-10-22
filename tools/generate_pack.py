@@ -763,6 +763,10 @@ _ore_mod_family("br_uranium", "bigger reactors", "biggerreactors", ["uranium_ore
 # Create: Metallurgy (MIT): wolframite, in netherrack only, so no Seamless Ores variants.
 _ore_mod_family("cmet_wolframite", "create metallurgy", "createmetallurgy", ["wolframite_ore"], "wolframite")
 
+# Create: Propulsion (MIT): platinum.
+_ore_mod_family("cprop_platinum", "create propulsion simulated", "createpropulsion",
+                ["platinum_ore", "deepslate_platinum_ore"], "platinum", matrix="createpropulsion_platinum")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
