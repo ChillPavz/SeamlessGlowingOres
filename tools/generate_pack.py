@@ -925,6 +925,19 @@ for _o in _BASIC_METALS:
 for _o in ("amber", "ender", "thallasium"):
     _ore_mod_family(f"be_{_o}", "betterend", "betterend", [f"{_o}_ore"], _o)
 
+# BetterNether (MIT): cincinnasite and ruby with borders of their own; its Nether lapis and redstone wear
+# the game's borders and connect to the game's ores (owner: other mods put the game's ores in the Nether
+# too, and they may touch). Every one picks a random rotation per block in its blockstate.
+_ore_mod_family("bn_cincinnasite", "betternether", "betternether", ["cincinnasite_ore"], "cincinnasite",
+                matrix="betternether_cincinnasite")
+_ore_mod_family("bn_nether_ruby", "betternether", "betternether", ["nether_ruby_ore"], "nether_ruby",
+                matrix="betternether_nether_ruby")
+for _o in ("lapis", "redstone"):
+    FAMILIES[_o]["group"] = f"vanilla_{_o}"
+    add_family(f"bn_nether_{_o}", art="betternether", targets=[f"betternether:nether_{_o}_ore"],
+               overlay_file=f"nether_{_o}_overlay", border_file=f"{_o}_border", border_art=VANILLA,
+               group=f"vanilla_{_o}", matrix=f"betternether_nether_{_o}")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
