@@ -921,6 +921,10 @@ for _o in _BASIC_METALS:
     add_family(f"bno_{_o}", art="basic nether ores", targets=[f"bno:{_h}_{_o}_ore" for _h in ("nether", "basalt", "soul")],
                overlay_file=f"nether_{_o}_ore", border_file=f"nether_{_o}_ore_border", matrix=None)
 
+# BetterEnd (MIT; its CC BY-NC-SA asset list names no ore): three End ores, so no Seamless Ores variants.
+for _o in ("amber", "ender", "thallasium"):
+    _ore_mod_family(f"be_{_o}", "betterend", "betterend", [f"{_o}_ore"], _o)
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
