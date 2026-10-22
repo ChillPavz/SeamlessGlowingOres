@@ -824,6 +824,10 @@ for _h in ("stone", "deepslate", "end_stone", "abysslate", "voidstone"):
     _ore_mod_family(f"hz_zenalite_{_h}", "hazen n stuff", "hazennstuff", [f"zenalite_{_h}_ore"], f"zenalite_{_h}",
                     border="zenalite", group="hazennstuff_zenalite")
 
+# Majrusz's Progressive Difficulty (MIT): enderium shard ore, End only, so no Seamless Ores variants.
+_ore_mod_family("mj_enderium_shard", "majruszs progressive difficulty", "majruszsdifficulty", ["enderium_shard_ore"],
+                "enderium_shard")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
