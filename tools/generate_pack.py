@@ -889,6 +889,11 @@ _ore_mod_family("sgc_solarmetal", "silent gear compat", "silentcompat", ["solarm
 _ore_mod_family("sul_jade", "sullys mod", "sullysmod", ["jade_ore", "deepslate_jade_ore"], "jade",
                 matrix="sullysmod_jade")
 
+# Superb Warfare (AGPL): galena, scheelite and silver.
+for _o in ("galena", "scheelite", "silver"):
+    _ore_mod_family(f"sbw_{_o}", "superb warfare", "superbwarfare", [f"{_o}_ore", f"deepslate_{_o}_ore"], _o,
+                    matrix=f"superbwarfare_{_o}")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
