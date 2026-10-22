@@ -880,6 +880,11 @@ _ore_mod_family("scg_vehement_coal", "scorched guns", "scguns", ["vehement_coal_
                 matrix="vehement_coal")
 ANIMATED["scg_vehement_coal"] = _mcmeta_animation("scorched guns", "vehement_coal")
 
+# Silent Gear Compat (MIT): arcmetal, plasteel, voidmetal, and the Nether's solarmetal (no variants of it).
+for _o in ("arcmetal", "plasteel", "voidmetal"):
+    _ore_mod_family(f"sgc_{_o}", "silent gear compat", "silentcompat", [f"{_o}_ore"], _o, matrix=_o)
+_ore_mod_family("sgc_solarmetal", "silent gear compat", "silentcompat", ["solarmetal_ore"], "solarmetal")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
