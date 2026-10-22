@@ -898,6 +898,16 @@ for _o in ("galena", "scheelite", "silver"):
 _ore_mod_family("th_sal_ammoniac", "theurgy", "theurgy", ["sal_ammoniac_ore", "deepslate_sal_ammoniac_ore"],
                 "sal_ammoniac", matrix="sal_ammoniac")
 
+# Basic End Ores (MIT; mod id beo): the game's eight ores in end stone, drawn as the game's, join those
+# families; its eight metals use the mod's own overlay textures as they are. The mod renders them cutout,
+# so a pixel shows at alpha 0.1 and up exactly as our cutout glow does (borders picked from those pixels).
+for _o in ("coal", "copper", "diamond", "emerald", "gold", "iron", "lapis", "redstone"):
+    FAMILIES[_o]["targets"].append(f"beo:end_{_o}_ore")
+_BASIC_METALS = ("aluminum", "lead", "nickel", "osmium", "silver", "tin", "uranium", "zinc")
+for _o in _BASIC_METALS:
+    add_family(f"beo_{_o}", art="basic end ores", targets=[f"beo:end_{_o}_ore"],
+               overlay_file=f"end_{_o}_ore", border_file=f"end_{_o}_ore_border", matrix=None)
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
