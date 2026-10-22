@@ -756,6 +756,10 @@ FAMILIES["iron"]["targets"].append("alexscaves:galena_iron_ore")
 FAMILIES["redstone"]["targets"].append("alexscaves:guanostone_redstone_ore")
 _ore_mod_family("ac_uranium", "alexs caves", "alexscaves", ["radrock_uranium_ore"], "uranium")
 
+# Bigger Reactors (LGPL): uranium.
+_ore_mod_family("br_uranium", "bigger reactors", "biggerreactors", ["uranium_ore", "deepslate_uranium_ore"],
+                "uranium", matrix="biggerreactors_uranium")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
