@@ -749,6 +749,13 @@ def _mcmeta_animation(art, stem):
 _ore_mod_family("aa_black_quartz", "actually additions", "actuallyadditions", ["black_quartz_ore"],
                 "black_quartz", matrix="black_quartz")
 
+# Alex's Caves (LGPL): its coal, iron and redstone are drawn as the game's and join those families; the
+# radrock uranium has art of its own. No Seamless Ores variants (its ores sit in its own stones only).
+FAMILIES["coal"]["targets"].append("alexscaves:coprolith_coal_ore")
+FAMILIES["iron"]["targets"].append("alexscaves:galena_iron_ore")
+FAMILIES["redstone"]["targets"].append("alexscaves:guanostone_redstone_ore")
+_ore_mod_family("ac_uranium", "alexs caves", "alexscaves", ["radrock_uranium_ore"], "uranium")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
