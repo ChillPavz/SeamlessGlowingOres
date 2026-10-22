@@ -908,6 +908,14 @@ for _o in _BASIC_METALS:
     add_family(f"beo_{_o}", art="basic end ores", targets=[f"beo:end_{_o}_ore"],
                overlay_file=f"end_{_o}_ore", border_file=f"end_{_o}_ore_border", matrix=None)
 
+# Basic Nether Ores (MIT; mod id bno): the same art as Basic End Ores, drawn over netherrack and over its
+# own basalt and soul soil forms (all three blocks name one overlay texture). No gold: the game has its own.
+for _o in ("coal", "copper", "diamond", "emerald", "iron", "lapis", "redstone"):
+    FAMILIES[_o]["targets"] += [f"bno:{_h}_{_o}_ore" for _h in ("nether", "basalt", "soul")]
+for _o in _BASIC_METALS:
+    add_family(f"bno_{_o}", art="basic nether ores", targets=[f"bno:{_h}_{_o}_ore" for _h in ("nether", "basalt", "soul")],
+               overlay_file=f"nether_{_o}_ore", border_file=f"nether_{_o}_ore_border", matrix=None)
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
