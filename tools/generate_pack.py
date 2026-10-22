@@ -183,7 +183,7 @@ FAMILIES = {
     "lapis":    dict(art=VANILLA, targets=["minecraft:lapis_ore", "minecraft:deepslate_lapis_ore"]),
     # Born in Chaos' infected diamond is a trap dressed as diamond ore (its models draw the game's own
     # diamond textures, on 1.20.1 and 1.21.1 alike), so it glows and connects as diamond: the disguise
-    # holds. Seamless Ores' tuff variant is <host>_infected_diamond_ore, hence the extra suffix.
+    # holds. Seamless Ores knows its tuff variant's ore as infected_diamond, hence the extra suffix.
     "diamond":  dict(art=VANILLA, targets=["minecraft:diamond_ore", "minecraft:deepslate_diamond_ore",
                                            "born_in_chaos_v1:infected_diamond_ore",
                                            "born_in_chaos_v1:infected_deepslate_diamond_ore"],
@@ -507,7 +507,8 @@ for _u in ("powah_uraninite", "powah_uraninite_poor", "powah_uraninite_dense"):
 
 # WHAT SEAMLESS ORES CALLS THE SAME ORE.
 #
-# The mod names its variants <host>_<ore>_ore, and that <ore> is NOT the family key here. Keys are
+# The mod knows each ore by its own name (the ore half of each pair in its ids.json), and that is NOT
+# the family key here. Keys are
 # prefixed by mod so two mods' identically named ores stay apart (mek_lead vs tfmg_lead), and the
 # MOD prefixes an ore of its own whenever the plain name is already taken by another supported mod,
 # which is where silents_silver and energized_tin come from.
@@ -893,9 +894,9 @@ def layout():
     return data
 
 
-# Host stones the mod uses as an id PREFIX. A block only counts as ours if its prefix is one of
-# these exactly. Without that check `basalt_midas_gold_ore` ends with `_gold_ore` and would be
-# swept into the vanilla `gold` family, whose prefix would come out as the non-host "basalt_midas".
+# The game's own rock, by the mod's host names (the host half of each pair in its ids.json). Only these
+# match a family by its suffix and its `hosts` filter; any other host is another mod's stone, matched
+# by the Matrix key alone.
 MOD_HOSTS = {"granite", "diorite", "andesite", "tuff", "dripstone", "cinnabar", "basalt", "blackstone"}
 NETHER_HOSTS = {"basalt", "blackstone"}
 # The game's own rock the mod gives the DEEPSLATE tier: an ore with deepslate art of its own wears it there.
@@ -964,65 +965,64 @@ def branch_of(path):
     return rel[0].removeprefix("seamlessores-").removesuffix("-multiloader")
 
 
+def so_variants():
+    """Every Seamless Ores variant as (host, ore key, block id, build folder), from each build's
+    seamlessores/ids.json, which the mod's generator writes (6.0.0 on): the ids are never parsed, so a
+    change in how the mod names its blocks cannot drop a block from the pack."""
+    global _VARIANTS
+    if _VARIANTS is None:
+        _VARIANTS = []
+        monolith = os.path.normpath(os.path.join(root(), "..", MONOLITH))
+        for band in sorted(os.listdir(monolith)) if os.path.isdir(monolith) else []:
+            src = os.path.join(monolith, band, "common", "src")
+            for era in sorted(os.listdir(src)) if os.path.isdir(src) else []:
+                path = os.path.join(src, era, "resources", MOD_NAMESPACE, "ids.json")
+                if os.path.isfile(path):
+                    for pair, block in json.load(open(path, encoding="utf-8"))["ids"].items():
+                        host, key = pair.split("|")
+                        _VARIANTS.append((host, key, f"{MOD_NAMESPACE}:{block}", os.path.join(src, era)))
+        if os.path.isdir(monolith) and not _VARIANTS:
+            sys.exit(f"no seamlessores/ids.json in any {MONOLITH} build; regenerate the mod's assets")
+    return _VARIANTS
+
+
+_VARIANTS = None
+
+
 def mod_block_targets(family):
     """
-    Our own blocks in this family, discovered from the mod's blockstates rather than hardcoded.
-
-    The mod names them <host>_<ore>_ore. Reading the real directory means a block we add or drop in
-    the mod cannot silently fall out of step with the pack.
+    Our own blocks in this family, from the mod's ids.json (so_variants), by ore key. In the game's own
+    rock: the family's suffix or Matrix key, and any `also_suffixes` (other ores of ours that glow as
+    this family, Born in Chaos' infected diamond), on the hosts `hosts` allows (nether, overworld, deep,
+    shallow): an ore with an overworld and a nether form (gold and nether gold, banglum) is told apart
+    by the host. In another mod's stone: the Matrix key only (None: no such blocks), and a family split
+    by tier (Ice and Fire CE's silver) takes only the stones of its own tier.
     """
-    suffix = FAMILIES[family].get("suffix", family)
-    # An ore with BOTH an overworld and a nether form produces the same <host>_<suffix>_ore name for
-    # each, and only the host tells them apart: vanilla gold vs nether gold, and Mythic Metals'
-    # banglum vs nether banglum. Declared per family rather than hardcoded by name, so the next such
-    # pair is one key. Everything else takes any host - including quartz, whose only variants ARE
-    # the nether ones, so it must not be filtered as if it were overworld.
-    hosts = FAMILIES[family].get("hosts")
-    if hosts == "nether":
-        allowed = lambda host: host in NETHER_HOSTS          # noqa: E731
-    elif hosts == "overworld":
-        allowed = lambda host: host not in NETHER_HOSTS      # noqa: E731
-    elif hosts == "deep":
-        allowed = lambda host: host in DEEP_HOSTS            # noqa: E731
-    elif hosts == "shallow":
-        allowed = lambda host: host not in NETHER_HOSTS and host not in DEEP_HOSTS   # noqa: E731
-    else:
-        allowed = lambda host: True                          # noqa: E731
-
+    spec = FAMILIES[family]
+    rock_keys = {spec.get("suffix", family), matrix_key(family)} | set(spec.get("also_suffixes", []))
+    hosts = spec.get("hosts")
     found = set()
-    # `also_suffixes`: other ores of ours that glow as this family (Born in Chaos' infected diamond).
-    for suffix in [suffix] + FAMILIES[family].get("also_suffixes", []):
-        for states in mod_asset_dirs("blockstates"):
-            for name in sorted(os.listdir(states)):
-                if not name.endswith(".json"):
-                    continue
-                block = name[:-5]
-                if not block.endswith(f"_{suffix}_ore"):
-                    continue
-                host = block[: -len(f"_{suffix}_ore")]
-                if host in MOD_HOSTS and allowed(host):
-                    found.add(f"{MOD_NAMESPACE}:{block}")
+    for host, key, block, tree in so_variants():
+        if host in MOD_HOSTS:
+            if key not in rock_keys:
+                continue
+            deep, nether = host in DEEP_HOSTS, host in NETHER_HOSTS
+            if (hosts == "nether" and not nether or hosts == "overworld" and nether
+                    or hosts == "deep" and not deep or hosts == "shallow" and (deep or nether)):
+                continue
+        else:
+            if key != matrix_key(family):
+                continue
+            if hosts in ("deep", "shallow") and (matrix_host_tiers(tree).get(host) == "deepslate") != (hosts == "deep"):
+                continue
+        found.add(block)
     return sorted(found)
 
 
-# The Matrix ores, Seamless Ores' blocks in MODDED stones (they were a separate mod, Seamless Ores:
-# Matrix, until it was folded in). Their ids are <stonemod>_<stone>_<ore>_ore in the mod's own namespace
-# (seamlessores:blockus_limestone_iron_ore): the stone mod is part of the name because Create and
-# Blockus both have a limestone, and the ore part is the full ore name, so nether gold is spelled out
-# and needs no host split. Their hosts are read from the mod's own host table (its placed(...) stones),
-# the same file its generator parses, so a stone added there reaches the pack on the next build. Every
-# band has them; a band folder may hold several builds (1.21/common/src/<era>/), each with its own table.
+# The stones other mods place (the Matrix ores until they were folded into Seamless Ores) have their
+# tier in the mod's host table (its placed(...) stones), which a family split by tier reads. Every
+# band has one; a band folder may hold several builds (1.21/common/src/<era>/), each with its own table.
 MATRIX_HOST_TABLE = ("java", "com", "chillpavz", "seamlessores", "content", "HostStone.java")
-
-
-def matrix_hosts(tree):
-    """The stones other mods place, as id prefixes (blockus_limestone), from one build's host table
-    (tree: a band's common/src/<era> folder)."""
-    table = os.path.join(tree, *MATRIX_HOST_TABLE)
-    if not os.path.isfile(table):
-        return set()
-    with open(table, encoding="utf-8") as handle:
-        return {f"{mod}_{path}" for mod, path in re.findall(r'placed\("(\w+)", "(\w+)"', handle.read())}
 
 
 _RETIRED = None
@@ -1042,30 +1042,13 @@ def retired_ids():
 
 
 def matrix_host_tiers(tree):
-    """{stone id prefix: its OreTier, lower case} from one build's host table."""
+    """{host name (create_limestone): its OreTier, lower case} from one build's host table."""
     table = os.path.join(tree, *MATRIX_HOST_TABLE)
     if not os.path.isfile(table):
         return {}
     with open(table, encoding="utf-8") as handle:
         return {f"{mod}_{path}": tier.lower() for mod, path, tier in
                 re.findall(r'placed\("(\w+)", "(\w+)",\s*OreTier\.(\w+)', handle.read())}
-
-
-def matrix_dirs():
-    """The mod's build folders (<band>/common/src/<era>) that carry the Matrix ores; none is fine, the
-    pack builds alone. Every band has them, so finding none means the host table changed shape."""
-    monolith = os.path.normpath(os.path.join(root(), "..", MONOLITH))
-    if not os.path.isdir(monolith):
-        return []
-    dirs = []
-    for band in sorted(os.listdir(monolith)):
-        src = os.path.join(monolith, band, "common", "src")
-        for era in sorted(os.listdir(src)) if os.path.isdir(src) else []:
-            if matrix_hosts(os.path.join(src, era)):
-                dirs.append(os.path.join(src, era))
-    if not dirs:
-        sys.exit(f"no placed(...) stones in any {MONOLITH} host table; the pattern no longer matches it")
-    return dirs
 
 
 MATRIX_SUFFIX_PREFIXES = ("tr_", "ep_", "occ_", "sg_", "sgear_", "powah_", "ma_", "cb_", "dmek_", "tfmg_",
@@ -1097,29 +1080,8 @@ def check_matrix_keys():
         seen[(key, tier)] = family
 
 
-def matrix_block_targets(family):
-    """Matrix's blocks in this family: <host>_<ore>_ore for each host its table declares."""
-    ore = matrix_key(family)
-    found = set()
-    if ore is None:
-        return []
-    # A family split by tier (Ice and Fire CE's silver) takes only the stones of its own tier.
-    tier_filter = FAMILIES[family].get("hosts") if FAMILIES[family].get("hosts") in ("deep", "shallow") else None
-    for tree in matrix_dirs():
-        states = os.path.join(tree, "resources", "assets", MOD_NAMESPACE, "blockstates")
-        if not os.path.isdir(states):
-            continue
-        tiers = matrix_host_tiers(tree)
-        for host in matrix_hosts(tree):
-            if tier_filter and (tiers.get(host) == "deepslate") != (tier_filter == "deep"):
-                continue
-            if os.path.isfile(os.path.join(states, f"{host}_{ore}_ore.json")):
-                found.add(f"{MOD_NAMESPACE}:{host}_{ore}_ore")
-    return sorted(found)
-
-
 def family_targets(family):
-    ours = [t for t in mod_block_targets(family) + matrix_block_targets(family) if t not in retired_ids()]
+    ours = [t for t in mod_block_targets(family) if t not in retired_ids()]
     return list(FAMILIES[family]["targets"]) + ours
 
 
