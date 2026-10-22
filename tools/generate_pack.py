@@ -806,6 +806,9 @@ for _o, _matrix in (("arclight", "arclight"), ("bloodstone", "epicpaladins_blood
 _ore_mod_family("epal_moonlight", "epic paladins", "epicpaladins", ["moonlight_ore"], "moonlight", matrix="moonlight")
 _ore_mod_family("epal_jade", "epic paladins", "epicpaladins", ["jade_ore"], "jade")
 
+# EvilCraft (CC BY 4.0 images): dark ore, glowing in both of its states.
+_ore_mod_family("ec_dark", "evilcraft", "evilcraft", ["dark_ore", "dark_ore_deepslate"], "dark", matrix="dark")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
