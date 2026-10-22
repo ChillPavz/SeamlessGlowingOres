@@ -828,6 +828,11 @@ for _h in ("stone", "deepslate", "end_stone", "abysslate", "voidstone"):
 _ore_mod_family("mj_enderium_shard", "majruszs progressive difficulty", "majruszsdifficulty", ["enderium_shard_ore"],
                 "enderium_shard")
 
+# NetherEx (assets MIT): gold and quartz in its three netherracks, drawn as the game's.
+for _n in ("fiery", "gloomy", "lively"):
+    FAMILIES["nether_gold"]["targets"].append(f"netherex:{_n}_gold_ore")
+    FAMILIES["quartz"]["targets"].append(f"netherex:{_n}_quartz_ore")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
