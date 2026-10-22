@@ -833,6 +833,23 @@ for _n in ("fiery", "gloomy", "lively"):
     FAMILIES["nether_gold"]["targets"].append(f"netherex:{_n}_gold_ore")
     FAMILIES["quartz"]["targets"].append(f"netherex:{_n}_quartz_ore")
 
+# Ores Above Diamonds (MIT): amethyst (stone, deepslate and netherrack share a drawing, the End's differs)
+# and black opal (the netherrack drawing differs). One border per ore, one family per dimension.
+_ore_mod_family("oad_amethyst", "ores above diamonds", "oresabovediamonds", ["amethyst_ore", "deepslate_amethyst_ore"],
+                "amethyst", matrix="amethyst", group="oresabovediamonds_amethyst")
+_ore_mod_family("oad_nether_amethyst", "ores above diamonds", "oresabovediamonds", ["nether_amethyst_ore"],
+                "amethyst", matrix="nether_amethyst", group="oresabovediamonds_amethyst")
+_ore_mod_family("oad_end_amethyst", "ores above diamonds", "oresabovediamonds", ["end_amethyst_ore"],
+                "end_amethyst", border="amethyst", group="oresabovediamonds_amethyst")
+_ore_mod_family("oad_black_opal", "ores above diamonds", "oresabovediamonds",
+                ["black_opal_ore", "deepslate_black_opal_ore"], "black_opal", matrix="black_opal",
+                group="oresabovediamonds_black_opal")
+_ore_mod_family("oad_end_black_opal", "ores above diamonds", "oresabovediamonds", ["end_black_opal_ore"],
+                "black_opal", group="oresabovediamonds_black_opal")
+_ore_mod_family("oad_nether_black_opal", "ores above diamonds", "oresabovediamonds", ["nether_black_opal_ore"],
+                "nether_black_opal", border="black_opal", matrix="nether_black_opal",
+                group="oresabovediamonds_black_opal")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
