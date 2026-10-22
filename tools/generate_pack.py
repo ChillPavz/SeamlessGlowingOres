@@ -885,6 +885,10 @@ for _o in ("arcmetal", "plasteel", "voidmetal"):
     _ore_mod_family(f"sgc_{_o}", "silent gear compat", "silentcompat", [f"{_o}_ore"], _o, matrix=_o)
 _ore_mod_family("sgc_solarmetal", "silent gear compat", "silentcompat", ["solarmetal_ore"], "solarmetal")
 
+# Sully's Mod (LGPL): jade.
+_ore_mod_family("sul_jade", "sullys mod", "sullysmod", ["jade_ore", "deepslate_jade_ore"], "jade",
+                matrix="sullysmod_jade")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
