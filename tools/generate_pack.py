@@ -1074,13 +1074,15 @@ def art_path(family, kind, legacy=False):
 
     A family may override either with `overlay_file` / `border_file`, which is how a split family
     reuses its sibling's art. See the split families above. legacy=True picks the old drawing of a
-    LEGACY_ART family instead.
+    LEGACY_ART family instead. `border_art` takes the border from another mod's folder: another mod's
+    form of the game's ore wears the game's border, and connects to it through a `group`.
     """
     stem = "overlay" if kind == "overlays" else "border"
     name = FAMILIES[family].get(f"{stem}_file", f"{family}_{stem}")
     if legacy:
         name = LEGACY_ART[family][0 if kind == "overlays" else 1]
-    return os.path.join(art_dir(kind, FAMILIES[family]["art"]), f"{name}.png")
+    art = FAMILIES[family].get("border_art", FAMILIES[family]["art"]) if kind == "borders" else FAMILIES[family]["art"]
+    return os.path.join(art_dir(kind, art), f"{name}.png")
 
 
 def art_dir(kind, art):
