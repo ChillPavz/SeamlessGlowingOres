@@ -959,6 +959,17 @@ for _o, _family in (("nether_gold", "nether_gold"), ("nether_quartz", "quartz"))
 _ore_mod_family("do_ancient_nether", "dense ores", "denseores", ["ancient_nether_ore"], "ancient_nether",
                 matrix="denseores_ancient_nether")
 
+# Electrodynamics (its licence lets its art be redistributed with credit to Sebastian Siljuholtet Johansen
+# and a link to its page): 17 minerals; lithium is drawn apart in deepslate, one border for both.
+for _o in ("aluminum", "chromium", "fluorite", "lead", "molybdenum", "monazite", "niter", "salt", "silver",
+           "sulfur", "sylvite", "thorium", "tin", "titanium", "uranium", "vanadium"):
+    _ore_mod_family(f"edyn_{_o}", "electrodynamics", "electrodynamics", [f"ore{_o}", f"deepslateore{_o}"], _o,
+                    matrix=f"electrodynamics_{_o}")
+_ore_mod_family("edyn_lithium", "electrodynamics", "electrodynamics", ["orelithium"], "lithium",
+                matrix="electrodynamics_lithium", group="electrodynamics_lithium", hosts="shallow")
+_ore_mod_family("edyn_deepslate_lithium", "electrodynamics", "electrodynamics", ["deepslateorelithium"], "deepslate_lithium",
+                border="lithium", matrix="electrodynamics_lithium", group="electrodynamics_lithium", hosts="deep")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
