@@ -894,6 +894,10 @@ for _o in ("galena", "scheelite", "silver"):
     _ore_mod_family(f"sbw_{_o}", "superb warfare", "superbwarfare", [f"{_o}_ore", f"deepslate_{_o}_ore"], _o,
                     matrix=f"superbwarfare_{_o}")
 
+# Theurgy (CC BY-SA 4.0 art): sal ammoniac.
+_ore_mod_family("th_sal_ammoniac", "theurgy", "theurgy", ["sal_ammoniac_ore", "deepslate_sal_ammoniac_ore"],
+                "sal_ammoniac", matrix="sal_ammoniac")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
