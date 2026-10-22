@@ -772,6 +772,12 @@ for _o in ("aluminum", "titanium"):
     _ore_mod_family(f"ctd_{_o}", "create tank defenses", "create_tank_defenses", [f"{_o}_ore", f"{_o}_deepslate_ore"],
                     _o, matrix=f"tankdefenses_{_o}")
 
+# Deeper and Darker (AGPL): the game's eight ores in gloomslate and sculk stone, drawn as the game's, join
+# those families; sculk stone lead has art of its own. Its ores sit in its own stones only.
+for _o in ("coal", "copper", "diamond", "emerald", "gold", "iron", "lapis", "redstone"):
+    FAMILIES[_o]["targets"] += [f"deeperdarker:gloomslate_{_o}_ore", f"deeperdarker:sculk_stone_{_o}_ore"]
+_ore_mod_family("dd_lead", "deeper and darker", "deeperdarker", ["sculk_stone_lead_ore"], "lead")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
