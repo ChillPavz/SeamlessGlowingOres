@@ -778,6 +778,11 @@ for _o in ("coal", "copper", "diamond", "emerald", "gold", "iron", "lapis", "red
     FAMILIES[_o]["targets"] += [f"deeperdarker:gloomslate_{_o}_ore", f"deeperdarker:sculk_stone_{_o}_ore"]
 _ore_mod_family("dd_lead", "deeper and darker", "deeperdarker", ["sculk_stone_lead_ore"], "lead")
 
+# Embers Rekindled (LGPL): lead and silver are its only ore blocks (its other ore textures name no block).
+for _o in ("lead", "silver"):
+    _ore_mod_family(f"emb_{_o}", "embers rekindled", "embers", [f"{_o}_ore", f"deepslate_{_o}_ore"], _o,
+                    matrix=f"embers_{_o}")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
