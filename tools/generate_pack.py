@@ -938,6 +938,27 @@ for _o in ("lapis", "redstone"):
                overlay_file=f"nether_{_o}_overlay", border_file=f"{_o}_border", border_art=VANILLA,
                group=f"vanilla_{_o}", matrix=f"betternether_nether_{_o}")
 
+# Dense Ores (art shipped under AGPL-3.0, its Modrinth licence): the game's ores, denser. Each wears the
+# game's border and connects to the game's ore (owner); dense coal's deepslate form is drawn apart. The
+# ancient nether ore (netherite scrap in netherrack) has a border of its own.
+for _o in ("copper", "iron", "gold", "lapis", "redstone", "diamond", "emerald"):
+    FAMILIES[_o]["group"] = f"vanilla_{_o}"
+    add_family(f"do_{_o}", art="dense ores", targets=[f"denseores:dense_{_o}_ore", f"denseores:dense_deepslate_{_o}_ore"],
+               overlay_file=f"dense_{_o}_overlay", border_file=f"{_o}_border", border_art=VANILLA,
+               group=f"vanilla_{_o}", matrix=f"denseores_{_o}")
+FAMILIES["coal"]["group"] = "vanilla_coal"
+add_family("do_coal", art="dense ores", targets=["denseores:dense_coal_ore"], overlay_file="dense_coal_overlay",
+           border_file="coal_border", border_art=VANILLA, group="vanilla_coal", matrix="denseores_coal", hosts="shallow")
+add_family("do_deepslate_coal", art="dense ores", targets=["denseores:dense_deepslate_coal_ore"],
+           overlay_file="deepslate_dense_coal_overlay", border_file="coal_border", border_art=VANILLA,
+           group="vanilla_coal", matrix="denseores_coal", hosts="deep")
+for _o, _family in (("nether_gold", "nether_gold"), ("nether_quartz", "quartz")):
+    FAMILIES[_family]["group"] = f"vanilla_{_family}"
+    add_family(f"do_{_o}", art="dense ores", targets=[f"denseores:dense_{_o}_ore"], overlay_file=f"dense_{_o}_overlay",
+               border_file=f"{_family}_border", border_art=VANILLA, group=f"vanilla_{_family}", matrix=f"denseores_{_o}")
+_ore_mod_family("do_ancient_nether", "dense ores", "denseores", ["ancient_nether_ore"], "ancient_nether",
+                matrix="denseores_ancient_nether")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
