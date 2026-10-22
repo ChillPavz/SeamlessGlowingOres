@@ -472,17 +472,19 @@ THIRD_PARTY = {
         "cthonic_gold":   ("cthonic_gold", ["cthonic_gold_ore"]),
     }),
     # Cobblemon (MPL-2.0). ONE universal overlay per evolution stone serves every rock it sits on,
-    # including Cobblemon's own dripstone moon stone and terracotta sun stone. The art is the SOLVED
-    # set: Cobblemon's translucent edge ring with the translucency removed (the mod instead draws
-    # per-host precomposited overlays, so the two differ by design). The nether fire stone is its own
-    # family (one family per dimension, as with Silent's Gems) sharing the same art.
+    # including Cobblemon's own dripstone moon stone and terracotta sun stone. The art is the solved
+    # TRANSLUCENT layer: Cobblemon's edge ring keeps its partial opacity and blends over whatever rock is
+    # underneath, as opal's does (owner, 22 Oct 2026, after opal was seen working in a client), so these
+    # render translucent. The mod instead draws per-host precomposited overlays, so the two differ by
+    # design. The nether fire stone is its own family (one family per dimension, as with Silent's Gems)
+    # sharing the same art.
     "cb": ("cobblemon", "cobblemon", {
-        **{f"{o}_stone": ((f"solved/{o}_stone_overlay", f"{o}_stone_border"),
+        **{f"{o}_stone": ((f"translucent/{o}_stone_overlay", f"{o}_stone_border"),
                           [f"{o}_stone_ore", f"deepslate_{o}_stone_ore"]
                           + ([f"dripstone_{o}_stone_ore"] if o == "moon" else [])
                           + ([f"terracotta_{o}_stone_ore"] if o == "sun" else []))
            for o in ("dawn", "dusk", "fire", "ice", "leaf", "moon", "shiny", "sun", "thunder", "water")},
-        "nether_fire_stone": (("solved/fire_stone_overlay", "fire_stone_border"), ["nether_fire_stone_ore"]),
+        "nether_fire_stone": (("translucent/fire_stone_overlay", "fire_stone_border"), ["nether_fire_stone_ore"]),
     }),
 }
 
@@ -644,6 +646,9 @@ FAMILIES["malum_cthonic_gold"]["matrix"] = None
 
 for _opal in ("sg_opal", "sg_nether_opal", "sg_end_opal"):
     FAMILIES[_opal]["render_type"] = "translucent"
+for _family in FAMILIES:
+    if _family.startswith("cb_"):
+        FAMILIES[_family]["render_type"] = "translucent"
 
 # OCCULTISM'S IESNIUM IS A HIDDEN ORE. iesnium_ore_natural renders plain NETHERRACK while
 # uncovered=false and only shows its texture at uncovered=true (Occultism's Third Eye). Glowing the
