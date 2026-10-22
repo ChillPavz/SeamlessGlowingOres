@@ -1497,12 +1497,17 @@ def build_whole_block_glow(out_dir, tex_dir):
             write_plain_glow(source, os.path.join(tex_dir, f"{texture}_glow.png"))
             appended[slot] = f"{PACK_NAMESPACE}:block/{texture}_glow"
 
-        write_json(os.path.join(out_dir, "assets", PACK_NAMESPACE, "models", "block", f"{name}_glow.json"), {
+        model = {
             "loader": "fusion:model",
             "type": "base",
             "parent": spec["parent"],
             "textures": appended,
-        })
+        }
+        if "elements" in spec:
+            # A block drawn with its own geometry (not a plain cube) glows over that same geometry.
+            with open(os.path.join(root(), "assets", "whole_block", spec["elements"]), encoding="utf-8") as handle:
+                model["elements"] = json.load(handle)
+        write_json(os.path.join(out_dir, "assets", PACK_NAMESPACE, "models", "block", f"{name}_glow.json"), model)
         modifier = {
             "targets": spec["targets"],
             "append": [f"{PACK_NAMESPACE}:block/{name}_glow"],
