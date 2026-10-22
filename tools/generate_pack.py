@@ -850,6 +850,12 @@ _ore_mod_family("oad_nether_black_opal", "ores above diamonds", "oresabovediamon
                 "nether_black_opal", border="black_opal", matrix="nether_black_opal",
                 group="oresabovediamonds_black_opal")
 
+# Rats (LGPL): cheese, oratchalcum and ratlantean gem, Ratlantis only, so no Seamless Ores variants. The gem
+# is animated in the mod; the glow keeps its timing.
+for _o in ("cheese", "oratchalcum", "ratlantean_gem"):
+    _ore_mod_family(f"rats_{_o}", "rats", "rats", [f"{_o}_ore"], _o)
+ANIMATED["rats_ratlantean_gem"] = _mcmeta_animation("rats", "ratlantean_gem")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
