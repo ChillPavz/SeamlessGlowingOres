@@ -783,6 +783,22 @@ for _o in ("lead", "silver"):
     _ore_mod_family(f"emb_{_o}", "embers rekindled", "embers", [f"{_o}_ore", f"deepslate_{_o}_ore"], _o,
                     matrix=f"embers_{_o}")
 
+# Enderite Mod (MIT): enderite and cracked enderite are drawn like ancient debris, so they glow as WHOLE
+# blocks, with no border (owner, 22 Oct 2026). Enderite is a column on every version (1.20.1 to 26.3).
+# Cracked enderite has bumps of its own (235 elements, the same on every version), so its glow is drawn
+# over that geometry, copied from the mod's model with its texture slots "0" (side) and "1" (top).
+WHOLE_BLOCK_GLOW["enderite_ore"] = dict(
+    targets=["enderitemod:enderite_ore"],
+    parent="block/cube_column",
+    textures={"end": "enderite_ore_top", "side": "enderite_ore_side"},
+)
+WHOLE_BLOCK_GLOW["cracked_enderite_ore"] = dict(
+    targets=["enderitemod:cracked_enderite_ore"],
+    parent="block/block",
+    textures={"0": "cracked_enderite_ore_side", "1": "cracked_enderite_ore_top", "particle": "cracked_enderite_ore_side"},
+    elements="cracked_enderite_ore_elements.json",
+)
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""

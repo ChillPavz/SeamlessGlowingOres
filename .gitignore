@@ -27,3 +27,8 @@ assets/overlays/no permission/
 assets/whole_block/*
 !assets/whole_block/ancient_debris_side.png
 !assets/whole_block/ancient_debris_top.png
+!assets/whole_block/enderite_ore_side.png
+!assets/whole_block/enderite_ore_top.png
+!assets/whole_block/cracked_enderite_ore_side.png
+!assets/whole_block/cracked_enderite_ore_top.png
+!assets/whole_block/cracked_enderite_ore_elements.json
