@@ -866,6 +866,20 @@ for _key, _block, _matrix in (("", "overworld", "dimensional_shard"), ("nether_"
 for _o in ("heart_crystal", "power_crystal"):
     _ore_mod_family(f"sh_{_o}", "scaling health", "scalinghealth", [f"{_o}_ore", f"deepslate_{_o}_ore"], _o, matrix=_o)
 
+# Scorched Guns (GPL): anthralite and sulfur drawn apart in deepslate (the deepslate-tier stones of ours
+# wear that drawing too) and sulfur in netherrack: one border per ore. Vehement coal keeps the mod's own
+# animation.
+for _o, _matrix in (("anthralite", "anthralite"), ("sulfur", "scguns_sulfur")):
+    _ore_mod_family(f"scg_{_o}", "scorched guns", "scguns", [f"{_o}_ore"], _o, matrix=_matrix,
+                    group=f"scguns_{_o}", hosts="shallow")
+    _ore_mod_family(f"scg_deepslate_{_o}", "scorched guns", "scguns", [f"deepslate_{_o}_ore"], f"deepslate_{_o}",
+                    border=_o, matrix=_matrix, group=f"scguns_{_o}", hosts="deep")
+_ore_mod_family("scg_nether_sulfur", "scorched guns", "scguns", ["nether_sulfur_ore"], "nether_sulfur", border="sulfur",
+                matrix="scguns_nether_sulfur", group="scguns_sulfur")
+_ore_mod_family("scg_vehement_coal", "scorched guns", "scguns", ["vehement_coal_ore"], "vehement_coal",
+                matrix="vehement_coal")
+ANIMATED["scg_vehement_coal"] = _mcmeta_animation("scorched guns", "vehement_coal")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
