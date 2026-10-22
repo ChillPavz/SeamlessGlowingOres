@@ -813,6 +813,17 @@ _ore_mod_family("ec_dark", "evilcraft", "evilcraft", ["dark_ore", "dark_ore_deep
 _ore_mod_family("ed_salt", "expanded delight", "expandeddelight", ["salt_ore", "deepslate_salt_ore"], "salt",
                 matrix="expandeddelight_salt")
 
+# Hazen 'N Stuff (PolyForm Shield 1.0.0; "Required Notice: Copyright Hazen"): chlorophyte, dreadstone, and
+# zenalite drawn per stone (five drawings, one border). Ids from 1.4.0.14 (1.21.1 NeoForge); the 1.20.1
+# "watered-down" edition names and draws its zenalite differently and is not covered. Solar core has no
+# overlay yet.
+_ore_mod_family("hz_chlorophyte", "hazen n stuff", "hazennstuff", ["chlorophyte_ore"], "chlorophyte",
+                matrix="chlorophyte")
+_ore_mod_family("hz_dreadstone", "hazen n stuff", "hazennstuff", ["dreadstone_ore"], "dreadstone", matrix="dreadstone")
+for _h in ("stone", "deepslate", "end_stone", "abysslate", "voidstone"):
+    _ore_mod_family(f"hz_zenalite_{_h}", "hazen n stuff", "hazennstuff", [f"zenalite_{_h}_ore"], f"zenalite_{_h}",
+                    border="zenalite", group="hazennstuff_zenalite")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
