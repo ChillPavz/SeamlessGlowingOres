@@ -717,6 +717,38 @@ for _er in ("yellorite", "anglesite", "benitoite"):
         ANIMATED[f"er_{_er}"] = {k: v for k, v in json.load(_handle)["animation"].items()
                                  if k in ("frametime", "frames")}
 
+# THE ORE MODS OF SEAMLESS ORES 6.0.0 (22 Oct 2026). Every block id read from the mods' own jars, never
+# guessed; the overlays are the owner's. Each family names its mod's art folder and file outright, and
+# `matrix` is the ore key Seamless Ores gives its variants (None: the mod has none of this ore).
+#
+# ONE BORDER PER ORE (owner, 22 Oct 2026). Where an ore is drawn differently on different stones, every
+# drawing keeps its own overlay, but they share ONE border, picked from the union of their colours, and
+# one connection group, so the ore borders as one body across its stones.
+#
+# A [bracketed] overlay in the owner's folder is identical to the game's: that block joins the game's own
+# family, as Meadow's do above.
+def _ore_mod_family(key, art, ns, blocks, stem, matrix=None, border=None, group=None, hosts=None):
+    spec = dict(art=art, targets=[f"{ns}:{b}" for b in blocks], overlay_file=f"{stem}_overlay",
+                border_file=f"{border or stem}_border", matrix=matrix)
+    if group:
+        spec["group"] = group
+    if hosts:
+        spec["hosts"] = hosts
+    add_family(key, **spec)
+
+
+def _mcmeta_animation(art, stem):
+    """The source mod's own frame timing, from the mcmeta the owner keeps beside the overlay."""
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        "assets", "overlays", "published", art, f"{stem}_overlay.png.mcmeta")
+    with open(path, encoding="utf-8") as handle:
+        return {k: v for k, v in json.load(handle)["animation"].items() if k in ("frametime", "frames")}
+
+
+# Actually Additions (MIT): black quartz, a stone form only.
+_ore_mod_family("aa_black_quartz", "actually additions", "actuallyadditions", ["black_quartz_ore"],
+                "black_quartz", matrix="black_quartz")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
