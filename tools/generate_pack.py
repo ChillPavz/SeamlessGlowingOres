@@ -970,6 +970,16 @@ _ore_mod_family("edyn_lithium", "electrodynamics", "electrodynamics", ["orelithi
 _ore_mod_family("edyn_deepslate_lithium", "electrodynamics", "electrodynamics", ["deepslateorelithium"], "deepslate_lithium",
                 border="lithium", matrix="electrodynamics_lithium", group="electrodynamics_lithium", hosts="deep")
 
+# Iter RPG (GPL-3.0): magmanum (Nether) and sanguarnet (deepslate; the block draws bloodjade_ore); its
+# component deposit is a whole textured block with no stone showing, so it glows whole, with no border.
+_ore_mod_family("ir_magmanum", "iter rpg", "iter_rpg", ["magmanum_ore"], "magmanum", matrix="iter_rpg_magmanum")
+_ore_mod_family("ir_sanguarnet", "iter rpg", "iter_rpg", ["sanguarnet_ore"], "sanguarnet", matrix="iter_rpg_sanguarnet")
+WHOLE_BLOCK_GLOW["component_deposit"] = dict(
+    targets=["iter_rpg:component_deposit"],
+    parent="block/cube_all",
+    textures={"all": "component_deposit"},
+)
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
