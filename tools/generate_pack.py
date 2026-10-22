@@ -856,6 +856,12 @@ for _o in ("cheese", "oratchalcum", "ratlantean_gem"):
     _ore_mod_family(f"rats_{_o}", "rats", "rats", [f"{_o}_ore"], _o)
 ANIMATED["rats_ratlantean_gem"] = _mcmeta_animation("rats", "ratlantean_gem")
 
+# RFTools Base (MIT): dimensional shard, one drawing in all three dimensions.
+for _key, _block, _matrix in (("", "overworld", "dimensional_shard"), ("nether_", "nether", "nether_dimensional_shard"),
+                              ("end_", "end", None)):
+    _ore_mod_family(f"rft_{_key}dimensional_shard", "rftools base", "rftoolsbase", [f"dimensionalshard_{_block}"],
+                    "dimensionalshard", matrix=_matrix, group="rftoolsbase_dimensional_shard")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
