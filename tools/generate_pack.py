@@ -862,6 +862,10 @@ for _key, _block, _matrix in (("", "overworld", "dimensional_shard"), ("nether_"
     _ore_mod_family(f"rft_{_key}dimensional_shard", "rftools base", "rftoolsbase", [f"dimensionalshard_{_block}"],
                     "dimensionalshard", matrix=_matrix, group="rftoolsbase_dimensional_shard")
 
+# Scaling Health (MIT): heart and power crystals.
+for _o in ("heart_crystal", "power_crystal"):
+    _ore_mod_family(f"sh_{_o}", "scaling health", "scalinghealth", [f"{_o}_ore", f"deepslate_{_o}_ore"], _o, matrix=_o)
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
