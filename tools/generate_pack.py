@@ -799,6 +799,13 @@ WHOLE_BLOCK_GLOW["cracked_enderite_ore"] = dict(
     elements="cracked_enderite_ore_elements.json",
 )
 
+# Epic Paladins (MIT): arclight, bloodstone, cryorium, the Nether's moonlight, and the End's jade.
+for _o, _matrix in (("arclight", "arclight"), ("bloodstone", "epicpaladins_bloodstone"), ("cryorium", "cryorium")):
+    _ore_mod_family(f"epal_{_o}", "epic paladins", "epicpaladins", [f"{_o}_ore", f"deepslate_{_o}_ore"], _o,
+                    matrix=_matrix)
+_ore_mod_family("epal_moonlight", "epic paladins", "epicpaladins", ["moonlight_ore"], "moonlight", matrix="moonlight")
+_ore_mod_family("epal_jade", "epic paladins", "epicpaladins", ["jade_ore"], "jade")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
