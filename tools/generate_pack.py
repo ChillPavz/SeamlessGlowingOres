@@ -767,6 +767,11 @@ _ore_mod_family("cmet_wolframite", "create metallurgy", "createmetallurgy", ["wo
 _ore_mod_family("cprop_platinum", "create propulsion simulated", "createpropulsion",
                 ["platinum_ore", "deepslate_platinum_ore"], "platinum", matrix="createpropulsion_platinum")
 
+# Create: Tank Defenses (AFL): aluminum and titanium.
+for _o in ("aluminum", "titanium"):
+    _ore_mod_family(f"ctd_{_o}", "create tank defenses", "create_tank_defenses", [f"{_o}_ore", f"{_o}_deepslate_ore"],
+                    _o, matrix=f"tankdefenses_{_o}")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
