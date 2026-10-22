@@ -809,6 +809,10 @@ _ore_mod_family("epal_jade", "epic paladins", "epicpaladins", ["jade_ore"], "jad
 # EvilCraft (CC BY 4.0 images): dark ore, glowing in both of its states.
 _ore_mod_family("ec_dark", "evilcraft", "evilcraft", ["dark_ore", "dark_ore_deepslate"], "dark", matrix="dark")
 
+# Expanded Delight (MIT): salt.
+_ore_mod_family("ed_salt", "expanded delight", "expandeddelight", ["salt_ore", "deepslate_salt_ore"], "salt",
+                matrix="expandeddelight_salt")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
