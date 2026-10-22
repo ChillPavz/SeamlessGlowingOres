@@ -760,6 +760,9 @@ _ore_mod_family("ac_uranium", "alexs caves", "alexscaves", ["radrock_uranium_ore
 _ore_mod_family("br_uranium", "bigger reactors", "biggerreactors", ["uranium_ore", "deepslate_uranium_ore"],
                 "uranium", matrix="biggerreactors_uranium")
 
+# Create: Metallurgy (MIT): wolframite, in netherrack only, so no Seamless Ores variants.
+_ore_mod_family("cmet_wolframite", "create metallurgy", "createmetallurgy", ["wolframite_ore"], "wolframite")
+
 
 def frame_count(image):
     """Frames in a vertical strip, or 1 for a plain square texture."""
