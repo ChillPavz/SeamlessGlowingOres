@@ -8,8 +8,9 @@ prior written permission from the copyright holder.
 You may download and use the published pack in your own game. Inclusion in a
 modpack or any public redistribution requires permission; please ask.
 
-The ore overlay textures are derived from Minecraft's own block textures and
-remain the property of Mojang Studios. The zinc overlay is derived from Create,
-licensed CC0 and MIT. Mythic Upgrades is licensed MIT. This notice covers the
-original artwork and the arrangement of the pack, not the underlying assets of
-those projects.
+The glow textures of the game's own ores are derived from Minecraft's own block
+textures and remain the property of Mojang Studios. The glow textures derived
+from other mods' ore art are listed file by file in THIRD_PARTY_ART.txt inside
+each published zip, each under the licence of the mod it comes from; this
+notice does not apply to them. This notice covers the original artwork and the
+arrangement of the pack, not the underlying assets of those projects.

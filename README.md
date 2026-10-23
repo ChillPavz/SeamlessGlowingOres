@@ -233,19 +233,36 @@ one file can carry them: on 26.2 they are simply inert rather than an error.
 
 ## Credits
 
-The ore overlays are derived from Minecraft's own textures and remain Mojang's property. Zinc is
-derived from Create, which is CC0 and MIT licensed. Mythic Upgrades and Mythic Metals are both MIT
-licensed.
+Every zip carries `THIRD_PARTY_ART.txt` at its root: each texture derived from another mod's art, file by
+file, under that mod's name, authors and licence. It is built from `CREDITS` in `tools/generate_pack.py`
+out of the textures actually written, and the build stops on a texture no family claims or an art
+folder with no credit entry. Copyleft and share-alike art keeps its own licence that way.
 
-The Ice and Fire overlays are drawn from [Ice and Fire Community Edition](https://www.curseforge.com/minecraft/mc-mods/iceandfire-ce)'s
-ore textures (LGPL-3.0).
+The glow textures of the game's own ores are derived from Minecraft's textures and remain Mojang's
+property. Borders and the ore art arrangement are original work by chillpavz.
 
-The Immersive Engineering overlays (aluminum, lead, nickel, silver and uranium) are derived from
-[Immersive Engineering](https://modrinth.com/mod/immersiveengineering)'s ore textures and are used
-with the permission of BluSunrize.
+Used with permission (credit wherever credits appear):
 
-The alpine salt glow is derived from [Let's Do Meadow](https://modrinth.com/mod/lets-do-meadow)'s
-salt art and is used with the permission of Satisfy. Meadow's other alpine ores use the vanilla
-overlays, and the alpine salt outline is original.
+| Mod | Granted by |
+|---|---|
+| [Immersive Engineering](https://modrinth.com/mod/immersiveengineering) | BluSunrize |
+| [Let's Do Meadow](https://modrinth.com/mod/lets-do-meadow) (alpine salt glow; the salt outline is original) | Satisfy |
+| Malum | Sammy Semicolon |
+| Oreganized | Team Galena |
 
-Borders and the ore art arrangement are original work by chillpavz.
+Electrodynamics' ore art is used under the Aurilisdev licence, which requires credit to **Sebastian
+Siljuholtet Johansen** and a link to its official download page wherever the pack is downloaded:
+[CurseForge](https://www.curseforge.com/minecraft/mc-mods/electrodynamics),
+[Modrinth](https://modrinth.com/mod/electrodynamics). Both store pages must carry that line.
+
+Shipped under the mod's own licence, file by file: Alex's Caves, Bigger Reactors (LGPL-2.1), Epic
+Paladins, Ice and Fire, Powah, Rats and Sully's Mod (LGPL-3.0); Cobblemon (MPL-2.0); Iter RPG, Scorched
+Guns and Superb Warfare (GPL-3.0); Deeper and Darker and Dense Ores (AGPL-3.0); Theurgy (CC BY-SA 4.0);
+EvilCraft (CC BY 4.0); Hazen 'N Stuff (PolyForm Shield 1.0.0, Required Notice: Copyright Hazen).
+
+Credit only (MIT, BSD, AFL or CC0): Actually Additions, Basic End Ores, Basic Nether Ores, BetterEnd,
+BetterNether, Create, Create: Metallurgy, Create: New Age, Create: Propulsion, Create: Tank Defenses,
+Create: TFMG, Dense Mekanism, Embers Rekindled, Enderite Mod, Energized Power, Exp Ores, Expanded
+Delight, Extreme Reactors, Majrusz's Progressive Difficulty, Mekanism, Modern Industrialization,
+Mystical Agriculture, Mythic Metals, Mythic Upgrades, Occultism, Ores Above Diamonds, RFTools Base,
+Scaling Health, Silent Gear, Silent Gear Compat, Silent's Gems, Tech Reborn, Things.

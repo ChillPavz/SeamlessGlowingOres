@@ -783,7 +783,7 @@ for _o in ("coal", "copper", "diamond", "emerald", "gold", "iron", "lapis", "red
     FAMILIES[_o]["targets"] += [f"deeperdarker:gloomslate_{_o}_ore", f"deeperdarker:sculk_stone_{_o}_ore"]
 _ore_mod_family("dd_lead", "deeper and darker", "deeperdarker", ["sculk_stone_lead_ore"], "lead")
 
-# Embers Rekindled (LGPL): lead and silver are its only ore blocks (its other ore textures name no block).
+# Embers Rekindled (MIT, repository and jar): lead and silver are its only ore blocks (its other ore textures name no block).
 for _o in ("lead", "silver"):
     _ore_mod_family(f"emb_{_o}", "embers rekindled", "embers", [f"{_o}_ore", f"deepslate_{_o}_ore"], _o,
                     matrix=f"embers_{_o}")
@@ -804,7 +804,7 @@ WHOLE_BLOCK_GLOW["cracked_enderite_ore"] = dict(
     elements="cracked_enderite_ore_elements.json",
 )
 
-# Epic Paladins (MIT): arclight, bloodstone, cryorium, the Nether's moonlight, and the End's jade.
+# Epic Paladins (repository MIT, jar LGPL-3.0: the stricter one is shipped): arclight, bloodstone, cryorium, the Nether's moonlight, and the End's jade.
 for _o, _matrix in (("arclight", "arclight"), ("bloodstone", "epicpaladins_bloodstone"), ("cryorium", "cryorium")):
     _ore_mod_family(f"epal_{_o}", "epic paladins", "epicpaladins", [f"{_o}_ore", f"deepslate_{_o}_ore"], _o,
                     matrix=_matrix)
@@ -894,7 +894,7 @@ _ore_mod_family("sgc_solarmetal", "silent gear compat", "silentcompat", ["solarm
 _ore_mod_family("sul_jade", "sullys mod", "sullysmod", ["jade_ore", "deepslate_jade_ore"], "jade",
                 matrix="sullysmod_jade")
 
-# Superb Warfare (AGPL): galena, scheelite and silver.
+# Superb Warfare (GPL-3.0): galena, scheelite and silver.
 for _o in ("galena", "scheelite", "silver"):
     _ore_mod_family(f"sbw_{_o}", "superb warfare", "superbwarfare", [f"{_o}_ore", f"deepslate_{_o}_ore"], _o,
                     matrix=f"superbwarfare_{_o}")
@@ -979,6 +979,126 @@ WHOLE_BLOCK_GLOW["component_deposit"] = dict(
     parent="block/cube_all",
     textures={"all": "component_deposit"},
 )
+
+
+# CREDITS. Every art folder a family draws from, and the mod whose ore art it is derived from: who made
+# it and the licence that art stays under. Read from each mod's repository LICENSE and README, else its
+# jar, the stricter one winning where they disagree (maintainer notes, 21 to 23 Oct 2026). Every zip
+# carries THIRD_PARTY_ART.txt built from this table, naming each file it ships from that art, because
+# copyleft and share-alike art (LGPL, GPL, AGPL, MPL, CC BY-SA) keeps its licence file by file. A folder
+# missing here stops the build. "vanilla" is the game's own art and is covered by the notice's header.
+# (display, author, licence, links)
+CREDITS = {
+    "actually additions": ("Actually Additions", "Ellpeck", "MIT", ()),
+    "alexs caves": ("Alex's Caves", "Alexthe668, Noonyeyz", "LGPL-3.0", ()),
+    "basic end ores": ("Basic End Ores", "cScotPlay", "MIT", ()),
+    "basic nether ores": ("Basic Nether Ores", "cScotPlay", "MIT", ()),
+    "betterend": ("BetterEnd", "paulevs, Bulldog83, Yuki, Seaward and Team BetterX", "MIT", ()),
+    "betternether": ("BetterNether", "quiqueck, paulevs and Team BetterX", "MIT", ()),
+    "bigger reactors": ("Bigger Reactors", "RogueLogix, gizmocodes, Ridanisaurus", "LGPL-2.1", ()),
+    "cobblemon": ("Cobblemon", "The Cobblemon Team", "MPL-2.0", ()),
+    "create": ("Create", "the Create team", "MIT (this copy from Create Fly, CC0)", ()),
+    "create metallurgy": ("Create: Metallurgy", "Luc_Creeper74", "MIT", ()),
+    "create new age": ("Create: New Age", "Antarctic Gardens", "BSD-3-Clause", ()),
+    "create propulsion simulated": ("Create: Propulsion", "Sergey Feduk, Tronco_78, Bunting_chj, SSnowly, KyivSec", "MIT", ()),
+    "create tank defenses": ("Create: Tank Defenses", "ItsRuby05", "AFL-3.0", ()),
+    "create the factory must grow": ("Create: TFMG", "DrMangoTea, Pepa, Luna", "MIT", ()),
+    "deeper and darker": ("Deeper and Darker", "Kyanite Mods", "AGPL-3.0", ()),
+    "dense mekanism": ("Dense Mekanism", "", "MIT", ()),
+    "dense ores": ("Dense Ores", "NewJumperr", "AGPL-3.0 (as its Modrinth page states)", ()),
+    "electrodynamics": ("Electrodynamics", "Sebastian Siljuholtet Johansen (aurilisdev)",
+                        "Aurilisdev licence, used with credit to Sebastian Siljuholtet Johansen and a link to its official download page",
+                        ("https://www.curseforge.com/minecraft/mc-mods/electrodynamics",
+                         "https://modrinth.com/mod/electrodynamics")),
+    "embers rekindled": ("Embers Rekindled", "RCXcrafter, BordListian, Elucent, TechnoMysterio, KomradeSpectre", "MIT", ()),
+    "enderite mod": ("Enderite Mod", "Nic4Las, Pitti11, PianoManu", "MIT", ()),
+    "energized power": ("Energized Power", "JDDev0", "MIT", ()),
+    "epic paladins": ("Epic Paladins", "epicpaladinssareus, VeroxUniverse, continued by Bandit-Bytes", "LGPL-3.0", ()),
+    "evilcraft": ("EvilCraft", "rubensworks", "CC BY 4.0", ()),
+    "exp ores": ("Exp Ores", "TriQue", "MIT", ()),
+    "expanded delight": ("Expanded Delight", "ianm1647", "MIT", ()),
+    "extreme reactors": ("Extreme Reactors", "ZeroNoRyouki", "MIT", ()),
+    "hazen n stuff": ("Hazen 'N Stuff", "Hazen", "PolyForm Shield 1.0.0. Required Notice: Copyright Hazen", ()),
+    "ice and fire ce": ("Ice and Fire", "Alexthe666, the Community Edition by IAFEnvoy", "LGPL-3.0", ()),
+    "immersive engineering": ("Immersive Engineering", "BluSunrize, Damien A.W. Hazard",
+                              "Blu's License of Common Sense, used with the permission of BluSunrize", ()),
+    "iter rpg": ("Iter RPG", "BaronFonShish, RayRindou", "GPL-3.0", ()),
+    "majruszs progressive difficulty": ("Majrusz's Progressive Difficulty", "Majrusz", "MIT", ()),
+    "malum": ("Malum", "Sammy Semicolon", "All Rights Reserved, used with the permission of Sammy Semicolon", ()),
+    "meadow": ("Let's Do Meadow", "satisfy, Jason13", "All Rights Reserved, used with the permission of Satisfy", ()),
+    "mekanism": ("Mekanism", "Aidan C. Brady", "MIT", ()),
+    "modern industrialization": ("Modern Industrialization", "Azercoco, Technici4n", "MIT", ()),
+    "mystical agriculture": ("Mystical Agriculture", "BlakeBr0", "MIT", ()),
+    "mythic metals": ("Mythic Metals", "Noaaan", "MIT", ()),
+    "mythic upgrades": ("Mythic Upgrades", "TriQue", "MIT", ()),
+    "occultism": ("Occultism", "Kli Kli", "MIT", ()),
+    "oreganized": ("Oreganized", "Team Galena", "assets All Rights Reserved, used with the permission of Team Galena", ()),
+    "ores above diamonds": ("Ores Above Diamonds", "Squidsword", "MIT", ()),
+    "powah": ("Powah", "owmii, Technici4n, shartte", "LGPL-3.0", ()),
+    "rats": ("Rats", "AlexThe666, GizmoTheMoonPig", "LGPL-3.0", ()),
+    "rftools base": ("RFTools Base", "McJty", "MIT", ()),
+    "scaling health": ("Scaling Health", "SilentChaos512", "MIT", ()),
+    "scorched guns": ("Scorched Guns", "ribs", "GPL-3.0", ()),
+    "silent gear": ("Silent Gear", "SilentChaos512", "MIT", ()),
+    "silent gear compat": ("Silent Gear Compat", "dragoni7", "MIT", ()),
+    "silent gems": ("Silent's Gems", "SilentChaos512", "MIT", ()),
+    "sullys mod": ("Sully's Mod", "Uraneptus, MiteBeMana, KekeCreations", "LGPL-3.0", ()),
+    "superb warfare": ("Superb Warfare", "Atsuishio, Roki27, Light_Quanta and other contributors", "GPL-3.0", ()),
+    "tech reborn": ("Tech Reborn", "Team Reborn", "MIT", ()),
+    "theurgy": ("Theurgy", "Kli Kli", "CC BY-SA 4.0", ()),
+    "things": ("Things", "glisco", "MIT", ()),
+}
+# A whole-block glow is a copy of the block's own texture: credited by its namespace.
+WHOLE_BLOCK_ART = {"minecraft": "vanilla", "enderitemod": "enderite mod", "iter_rpg": "iter rpg"}
+
+
+def write_art_notice(out_dir):
+    """THIRD_PARTY_ART.txt at the zip root: every texture this pack ships that is derived from another
+    mod's art, under that mod's name, author and licence. Built from the textures actually written, so
+    a file the pack does not ship is never listed and one it ships is never missed."""
+    origin = {f"{family}_overlay": spec["art"] for family, spec in FAMILIES.items()}
+    for name, spec in WHOLE_BLOCK_GLOW.items():
+        namespace = spec["targets"][0].split(":", 1)[0]
+        if namespace not in WHOLE_BLOCK_ART:
+            sys.exit(f"WHOLE_BLOCK_GLOW {name}: namespace {namespace} has no WHOLE_BLOCK_ART entry")
+        for texture in spec["textures"].values():
+            origin[f"{texture}_glow"] = WHOLE_BLOCK_ART[namespace]
+    by_art = {}
+    for folder, _dirs, files in os.walk(out_dir):
+        for filename in files:
+            if not filename.endswith(".png") or filename == "pack.png":
+                continue
+            stem = filename[:-len(".png")]
+            if stem.endswith("_border"):
+                continue        # the outline alone is original art
+            art = origin.get(stem)
+            if art is None and re.fullmatch(r"meadow_alpine_salt_\d+_overlay", stem):
+                art = "meadow"
+            if art is None:
+                sys.exit(f"{filename}: no family or whole-block glow claims it, so its credit is unknown")
+            if art == "vanilla":
+                continue
+            if art not in CREDITS:
+                sys.exit(f"art folder '{art}' has no CREDITS entry (add its mod, author and licence)")
+            by_art.setdefault(art, set()).add(os.path.relpath(os.path.join(folder, filename), out_dir).replace(os.sep, "/"))
+    lines = [f"{PACK_NAME}: third-party art", "",
+             f"{PACK_NAME} is All Rights Reserved (see its pages). The glow textures listed below are",
+             "derived from other mods' own ore textures. Each stays under the licence of the mod it comes",
+             "from, shown with it; this pack's own terms do not apply to them. The glow textures of the",
+             "game's own ores are derived from Minecraft's textures and remain Mojang's. The outlines are",
+             "original work by chillpavz.", ""]
+    for art in sorted(by_art, key=lambda a: CREDITS[a][0].lower()):
+        display, author, licence, links = CREDITS[art]
+        lines.append(f"{display}{f' by {author}' if author else ''}, {licence}:")
+        lines += [f"  {link}" for link in links]
+        lines += [f"  {path}" for path in sorted(by_art[art])]
+        lines.append("")
+    text = "\n".join(lines)
+    if any(dash in text for dash in ("—", "–")):
+        sys.exit("THIRD_PARTY_ART.txt contains an em or en dash")
+    with open(os.path.join(out_dir, "THIRD_PARTY_ART.txt"), "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(text)
+    return len(by_art)
 
 
 def frame_count(image):
@@ -2104,6 +2224,8 @@ def build(variant, spec):
             if not os.path.exists(os.path.join(out_dir, rel)):
                 sys.exit(f"{CURRENT_ART_DIR}/{rel} has no counterpart in the pack root, so 1.20.1 "
                          f"would not have it. The overlay may only replace files, never add them.")
+
+    print(f"  THIRD_PARTY_ART.txt: {write_art_notice(out_dir)} mods")
 
     zip_path = os.path.join(root(), "build", f"{PACKS[PACK]['zip']}-{variant.capitalize()}.zip")
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as archive:
