@@ -91,12 +91,15 @@ the composite's `parent` lets vanilla draw Meadow's own model.
 
 ## Layout
 
+The art is not kept in this repo. It lives in a shared texture library, because the overlays serve
+the Seamless Ores mod as well as this pack. The generator reads it from `../../Assets/Textures`
+(relative to this folder), or from the folder named in the `SGO_ART` environment variable.
+
 | Path | What it holds |
 |---|---|
-| `assets/overlays/<mod>/<family>_overlay.png` | The ore layer, blobs on transparency |
-| `assets/borders/<mod>/<family>_border.png` | Hand drawn full frame border, 16x16, 60 opaque pixels |
-| `assets/whole_block/` | Full texture copies for blocks that glow entirely, currently ancient debris |
-| `assets/icon/` | Art used to build `pack.png` |
+| `<art>/overlays/published/<mod>/<family>_overlay.png` | The ore layer, blobs on transparency |
+| `<art>/borders/<mod>/<family>_border.png` | Hand drawn full frame border, 16x16, 60 opaque pixels |
+| `<art>/whole_block/` | Full texture copies for blocks that glow entirely, currently ancient debris |
 | `tools/fusion_full_layout.json` | Fusion's 47 tile layout table, recovered from the mod |
 | `tools/generate_pack.py` | The generator |
 

@@ -101,6 +101,10 @@ EFFECT = None
 # The Subtle pack's strength: the alpha its emissive layers are drawn at, in percent. Owner's pick from
 # the spike's shots (35, 50, 65).
 SUBTLE_ALPHA = int(os.environ.get("SGO_SUBTLE_ALPHA", "50"))
+# The art (overlays, borders, whole_block) lives in the shared texture library beside the projects,
+# not in this repo: the overlays serve the Seamless Ores mod as well as this pack. SGO_ART overrides it.
+ART_ROOT = os.environ.get("SGO_ART") or os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, os.pardir, os.pardir, "Assets", "Textures"))
 
 
 def use_pack(key):
@@ -210,7 +214,7 @@ FAMILIES = {
 # parent block/cube_column, `end` = ancient_debris_top, `side` = ancient_debris_side. So the
 # appended model needs end/side rather than the `all` every ore family uses.
 #
-# The art in assets/whole_block/ is a verbatim copy of Mojang's texture, which is what "the whole
+# The art in the art library's whole_block/ is a verbatim copy of Mojang's texture, which is what "the whole
 # thing glows" requires. Checked pixel-identical across 1.20.1, 1.21.1, 1.21.11 and 26.2, so one
 # copy serves the entire range this single file covers.
 WHOLE_BLOCK_GLOW = {
@@ -716,8 +720,7 @@ ANIMATED = {
 # Extreme Reactors plays a custom frame ORDER (a pulse, then a long rest), so frametime alone would be
 # wrong. The owner's overlays carry the mod's own mcmeta beside them; read it rather than retype it.
 for _er in ("yellorite", "anglesite", "benitoite"):
-    _meta = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                         "assets", "overlays", "published", "extreme reactors", f"{_er}_overlay.png.mcmeta")
+    _meta = os.path.join(ART_ROOT, "overlays", "published", "extreme reactors", f"{_er}_overlay.png.mcmeta")
     with open(_meta, encoding="utf-8") as _handle:
         ANIMATED[f"er_{_er}"] = {k: v for k, v in json.load(_handle)["animation"].items()
                                  if k in ("frametime", "frames")}
@@ -744,8 +747,7 @@ def _ore_mod_family(key, art, ns, blocks, stem, matrix=None, border=None, group=
 
 def _mcmeta_animation(art, stem):
     """The source mod's own frame timing, from the mcmeta the owner keeps beside the overlay."""
-    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                        "assets", "overlays", "published", art, f"{stem}_overlay.png.mcmeta")
+    path = os.path.join(ART_ROOT, "overlays", "published", art, f"{stem}_overlay.png.mcmeta")
     with open(path, encoding="utf-8") as handle:
         return {k: v for k, v in json.load(handle)["animation"].items() if k in ("frametime", "frames")}
 
@@ -1247,8 +1249,8 @@ def root():
 
 def art_path(family, kind, legacy=False):
     """
-    kind is 'overlays' or 'borders', laid out as assets/<kind>/<mod>/<family>_<x>.png, except that the
-    overlays of published mods sit in assets/overlays/published/<mod>/ (the owner's layout, 21 Oct 2026:
+    kind is 'overlays' or 'borders', laid out under ART_ROOT as <kind>/<mod>/<family>_<x>.png, except that the
+    overlays of published mods sit in ART_ROOT/overlays/published/<mod>/ (the owner's layout, 21 Oct 2026:
     published, permission and no permission folders; only published art is ever built).
 
     A family may override either with `overlay_file` / `border_file`, which is how a split family
@@ -1266,7 +1268,7 @@ def art_path(family, kind, legacy=False):
 
 def art_dir(kind, art):
     """The folder holding one mod's art of this kind (see art_path)."""
-    return os.path.join(root(), "assets", kind, *(("published",) if kind == "overlays" else ()), art)
+    return os.path.join(ART_ROOT, kind, *(("published",) if kind == "overlays" else ()), art)
 
 
 def layout():
@@ -1876,7 +1878,7 @@ def build_whole_block_glow(out_dir, tex_dir):
     for name, spec in WHOLE_BLOCK_GLOW.items():
         appended = {}
         for slot, texture in spec["textures"].items():
-            source = os.path.join(root(), "assets", "whole_block", f"{texture}.png")
+            source = os.path.join(ART_ROOT, "whole_block", f"{texture}.png")
             if not os.path.exists(source):
                 sys.exit(f"Missing whole-block art: {source}")
             write_plain_glow(source, os.path.join(tex_dir, f"{texture}_glow.png"))
@@ -1890,7 +1892,7 @@ def build_whole_block_glow(out_dir, tex_dir):
         }
         if "elements" in spec:
             # A block drawn with its own geometry (not a plain cube) glows over that same geometry.
-            with open(os.path.join(root(), "assets", "whole_block", spec["elements"]), encoding="utf-8") as handle:
+            with open(os.path.join(ART_ROOT, "whole_block", spec["elements"]), encoding="utf-8") as handle:
                 model["elements"] = json.load(handle)
         write_json(os.path.join(out_dir, "assets", PACK_NAMESPACE, "models", "block", f"{name}_glow.json"), model)
         modifier = {
@@ -1929,7 +1931,7 @@ def build_whole_block_glow(out_dir, tex_dir):
 # Fusion is the pack's one required dependency.
 SALT_BLOCKSTATE = "assets/meadow/blockstates/alpine_salt_ore.json"
 SALT_ERAS = {
-    # era: (the Meadow jar these were read from, [(Meadow's model, our overlay in assets/overlays/meadow)])
+    # era: (the Meadow jar these were read from, [(Meadow's model, our overlay in overlays/published/meadow)])
     "legacy": ("letsdo-meadow-forge-1.3.25.jar",
                [("meadow:block/alpine_salt_ore_1", "alpine_salt_overlay_1_old"),
                 ("meadow:block/alpine_salt_ore_2", "alpine_salt_overlay_2_old")]),
