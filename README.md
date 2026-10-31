@@ -258,14 +258,20 @@ Siljuholtet Johansen** and a link to its official download page wherever the pac
 [CurseForge](https://www.curseforge.com/minecraft/mc-mods/electrodynamics),
 [Modrinth](https://modrinth.com/mod/electrodynamics). Both store pages must carry that line.
 
+Railcraft Reborn's ore art is used under its own licence, with credit to Sm0keySa1m0n and Edivad99 and a
+link to [its repository](https://github.com/railcraft-reborn/railcraft).
+
 Shipped under the mod's own licence, file by file: Alex's Caves, Bigger Reactors (LGPL-2.1), Epic
-Paladins, Ice and Fire, Powah, Rats and Sully's Mod (LGPL-3.0); Cobblemon (MPL-2.0); Iter RPG, Scorched
-Guns and Superb Warfare (GPL-3.0); Deeper and Darker and Dense Ores (AGPL-3.0); Theurgy (CC BY-SA 4.0);
-EvilCraft (CC BY 4.0); Hazen 'N Stuff (PolyForm Shield 1.0.0, Required Notice: Copyright Hazen).
+Paladins, Ice and Fire, Powah, Rats, Spelunkery, Sully's Mod and Werewolves (LGPL-3.0); Cobblemon
+(MPL-2.0); Bronze, Create: Gunsmithing, Iter RPG, Just Enough Guns, Scorched Guns and Superb Warfare
+(GPL); Deeper and Darker and Dense Ores (AGPL-3.0); Treasure2 (OSL-3.0); Rubinated Nether and Theurgy
+(CC BY-SA 4.0); EvilCraft and Oritech (CC BY 4.0); Hazen 'N Stuff (PolyForm Shield 1.0.0, Required
+Notice: Copyright Hazen).
 
 Credit only (MIT, BSD, AFL or CC0): Actually Additions, Basic End Ores, Basic Nether Ores, BetterEnd,
 BetterNether, Create, Create: Metallurgy, Create: New Age, Create: Propulsion, Create: Tank Defenses,
 Create: TFMG, Dense Mekanism, Embers Rekindled, Enderite Mod, Energized Power, Exp Ores, Expanded
-Delight, Extreme Reactors, Majrusz's Progressive Difficulty, Mekanism, Modern Industrialization,
-Mystical Agriculture, Mythic Metals, Mythic Upgrades, Occultism, Ores Above Diamonds, RFTools Base,
-Scaling Health, Silent Gear, Silent Gear Compat, Silent's Gems, Tech Reborn, Things.
+Delight, Extreme Reactors, Majrusz's Progressive Difficulty, Mekanism, Mining Master, Modern
+Industrialization, Mystical Agriculture, Mythic Metals, Mythic Upgrades, MythicBotany, Occultism, Ores
+Above Diamonds, Project Red Exploration, RFTools Base, Scaling Health, Silent Gear, Silent Gear Compat,
+Silent's Gems, Sulfur and Potassium, Tech Reborn, The Midnight Lurker, Things, Tinkers' Construct.
