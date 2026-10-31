@@ -572,11 +572,14 @@ SO_SUFFIX.update({
     # Tech Reborn has uranium from 26.x only, prefixed there because the mod's plain "uranium"
     # variants are Modern Industrialization's.
     "tr_uranium": "techreborn_uranium",
+    # Their stone-mod variants, Seamless Ores' End ores (6.0.0).
+    "tr_peridot": "techreborn_peridot", "tr_sheldonite": "sheldonite", "tr_sodalite": "sodalite",
+    "tr_tungsten": "techreborn_tungsten",
     "mi_antimony": "antimony", "mi_bauxite": "mi_bauxite", "mi_iridium": "mi_iridium", "mi_lead": "mi_lead",
     "mi_lignite_coal": "lignite_coal", "mi_monazite": "monazite", "mi_nickel": "mi_nickel",
     "mi_salt": "salt", "mi_tin": "mi_tin", "mi_tungsten": "tungsten", "mi_uranium": "uranium",
     "occ_silver": "occultism_silver",
-    "er_yellorite": "yellorite", "er_benitoite": "benitoite",
+    "er_yellorite": "yellorite", "er_benitoite": "benitoite", "er_anglesite": "anglesite",
     "ma_inferium": "inferium", "ma_prosperity": "prosperity",
     "sg_opal": "opal",
     **{f"cb_{o}_stone": f"{o}_stone" for o in ("dawn", "dusk", "fire", "ice", "leaf", "moon", "shiny",
@@ -637,6 +640,14 @@ for _g in _SG_GEMS:
 # The other one-name pairs: the Nether form has its own key, or none (a fire stone in scoria is the one
 # fire stone ore, glowed by the overworld family's art).
 FAMILIES["expores_nether_experience"]["matrix"] = "nether_experience"
+# The End forms are ore types of their own in the mod (end_<stone key>), drawn with the stone form's art,
+# in the End's stones only (6.0.0).
+for _g in _SG_GEMS:
+    FAMILIES[f"sg_end_{_g}"]["matrix"] = "end_" + ("silents_" + _g if _g in ("ruby", "sapphire") else _SG_SO_NAME.get(_g, _g))
+FAMILIES["expores_end_experience"]["matrix"] = "end_experience"
+FAMILIES["sg_end_opal"]["matrix"] = "end_opal"
+FAMILIES["starrite"]["also_suffixes"] = ["end_starrite"]     # the stone form's drawing, not the end stone one
+FAMILIES["sgear_azure_silver"]["matrix"] = "azure_silver"
 FAMILIES["cb_nether_fire_stone"]["matrix"] = None
 # Ice and Fire CE's silver: one Matrix key, split between the two families by the host's tier.
 FAMILIES["iaf_deepslate_silver"]["matrix"] = "iceandfire_silver"
@@ -811,7 +822,7 @@ for _o, _matrix in (("arclight", "arclight"), ("bloodstone", "epicpaladins_blood
     _ore_mod_family(f"epal_{_o}", "epic paladins", "epicpaladins", [f"{_o}_ore", f"deepslate_{_o}_ore"], _o,
                     matrix=_matrix)
 _ore_mod_family("epal_moonlight", "epic paladins", "epicpaladins", ["moonlight_ore"], "moonlight", matrix="moonlight")
-_ore_mod_family("epal_jade", "epic paladins", "epicpaladins", ["jade_ore"], "jade")
+_ore_mod_family("epal_jade", "epic paladins", "epicpaladins", ["jade_ore"], "jade", matrix="epicpaladins_jade")
 
 # EvilCraft (CC BY 4.0 images): dark ore, glowing in both of its states.
 _ore_mod_family("ec_dark", "evilcraft", "evilcraft", ["dark_ore", "dark_ore_deepslate"], "dark", matrix="dark")
@@ -830,6 +841,7 @@ _ore_mod_family("hz_dreadstone", "hazen n stuff", "hazennstuff", ["dreadstone_or
 for _h in ("stone", "deepslate", "end_stone", "abysslate", "voidstone"):
     _ore_mod_family(f"hz_zenalite_{_h}", "hazen n stuff", "hazennstuff", [f"zenalite_{_h}_ore"], f"zenalite_{_h}",
                     border="zenalite", group="hazennstuff_zenalite")
+FAMILIES["hz_zenalite_end_stone"]["matrix"] = "zenalite"
 
 # Majrusz's Progressive Difficulty (MIT): enderium shard ore, End only, so no Seamless Ores variants.
 _ore_mod_family("mj_enderium_shard", "majruszs progressive difficulty", "majruszsdifficulty", ["enderium_shard_ore"],
@@ -910,6 +922,7 @@ _ore_mod_family("th_sal_ammoniac", "theurgy", "theurgy", ["sal_ammoniac_ore", "d
 # so a pixel shows at alpha 0.1 and up exactly as our cutout glow does (borders picked from those pixels).
 for _o in ("coal", "copper", "diamond", "emerald", "gold", "iron", "lapis", "redstone"):
     FAMILIES[_o]["targets"].append(f"beo:end_{_o}_ore")
+    FAMILIES[_o].setdefault("also_suffixes", []).append(f"beo_{_o}")
 _BASIC_METALS = ("aluminum", "lead", "nickel", "osmium", "silver", "tin", "uranium", "zinc")
 for _o in _BASIC_METALS:
     add_family(f"beo_{_o}", art="basic end ores", targets=[f"beo:end_{_o}_ore"],
@@ -919,9 +932,10 @@ for _o in _BASIC_METALS:
 # own basalt and soul soil forms (all three blocks name one overlay texture). No gold: the game has its own.
 for _o in ("coal", "copper", "diamond", "emerald", "iron", "lapis", "redstone"):
     FAMILIES[_o]["targets"] += [f"bno:{_h}_{_o}_ore" for _h in ("nether", "basalt", "soul")]
+    FAMILIES[_o].setdefault("also_suffixes", []).append(f"bno_{_o}")
 for _o in _BASIC_METALS:
     add_family(f"bno_{_o}", art="basic nether ores", targets=[f"bno:{_h}_{_o}_ore" for _h in ("nether", "basalt", "soul")],
-               overlay_file=f"nether_{_o}_ore", border_file=f"nether_{_o}_ore_border", matrix=None)
+               overlay_file=f"nether_{_o}_ore", border_file=f"nether_{_o}_ore_border", matrix=f"bno_{_o}")
 
 # BetterEnd (MIT; its CC BY-NC-SA asset list names no ore): three End ores, so no Seamless Ores variants.
 for _o in ("amber", "ender", "thallasium"):
@@ -1398,7 +1412,7 @@ def mod_block_targets(family):
                     or hosts == "deep" and not deep or hosts == "shallow" and (deep or nether)):
                 continue
         else:
-            if key != matrix_key(family):
+            if key != matrix_key(family) and key not in spec.get("also_suffixes", ()):
                 continue
             if hosts in ("deep", "shallow") and (matrix_host_tiers(tree).get(host) == "deepslate") != (hosts == "deep"):
                 continue
@@ -1795,7 +1809,9 @@ def assert_no_excluded_mods(out_dir):
 
     Content matters as much as path: a namespace can reach a pack through a model_modifier target
     list or a connection list without ever appearing in a filename. That is exactly how the
-    Immersive Ores gating had to work on the old build.
+    Immersive Ores gating had to work on the old build. In contents a namespace is matched as a namespace
+    (`galosphere:`): Seamless Ores' own variants name the stone they sit in (seamlessores:galosphere_pink_salt_...)
+    and are drawn with our own overlays, so they are not that mod's art.
     """
     hits = []
     for root, _dirs, files in os.walk(out_dir):
@@ -1809,7 +1825,7 @@ def assert_no_excluded_mods(out_dir):
                 if f.endswith((".json", ".mcmeta", ".txt", ".md")):
                     try:
                         with io.open(p, encoding="utf-8") as fh:
-                            if ns in fh.read().lower():
+                            if f"{ns}:" in fh.read().lower():
                                 hits.append(f"{rel} (contents: {ns})")
                     except (OSError, UnicodeDecodeError):
                         pass
