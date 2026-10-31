@@ -997,6 +997,107 @@ WHOLE_BLOCK_GLOW["component_deposit"] = dict(
 )
 
 
+# THE LAST ORE BATCH OF 6.0.0 (31 Oct 2026). Block ids read from each mod's jars; no block names Tinkers' ardite and
+# copper or Treasure2's jadeite, so that art stays unwired.
+def _split_family(prefix, art, ns, ore, matrix, block=None, deep_block=None, group=None):
+    """An ore drawn apart in deepslate: two overlays, one border, one connection group."""
+    group = group or f"{ns}_{ore}"
+    _ore_mod_family(f"{prefix}_{ore}", art, ns, [block or f"{ore}_ore"], ore, matrix=matrix, group=group, hosts="shallow")
+    _ore_mod_family(f"{prefix}_deepslate_{ore}", art, ns, [deep_block or f"deepslate_{ore}_ore"], f"deepslate_{ore}",
+                    border=ore, matrix=matrix, group=group, hosts="deep")
+
+
+# Werewolves (LGPL-3.0): silver.
+_split_family("ww", "werewolves become a beast", "werewolves", "silver", "werewolves_silver")
+
+# Treasure2 (OSL-3.0): one drawing per gem in stone and deepslate.
+for _o in ("onyx", "ruby", "sapphire", "topaz"):
+    _ore_mod_family(f"t2_{_o}", "treasure2", "treasure2", [f"{_o}_ore", f"deepslate_{_o}_ore"], _o, matrix=f"treasure2_{_o}")
+
+# Tinkers' Construct (MIT): cobalt.
+_ore_mod_family("tc_cobalt", "tinkers construct", "tconstruct", ["cobalt_ore"], "cobalt", matrix="tconstruct_cobalt")
+
+# The Midnight Lurker (MIT): void onyx, animated, in its own gloomstone: no Seamless Ores variants.
+_ore_mod_family("ml_void_onyx", "the midnight lurker", "midnightlurker", ["void_onyx_ore"], "void_onyx")
+ANIMATED["ml_void_onyx"] = _mcmeta_animation("the midnight lurker", "void_onyx")
+
+# Sulfur and Potassium (CC0): sulfur in deepslate and netherrack, one drawing.
+_ore_mod_family("sp_potassium", "sulfur and potassium more gunpowder", "sulfurpotassiummod", ["potassium_ore"], "potassium",
+                matrix="sulfurpotassiummod_potassium")
+_ore_mod_family("sp_sulfur", "sulfur and potassium more gunpowder", "sulfurpotassiummod", ["sulfur_ore", "sulfur_nether_ore"],
+                "sulfur", matrix="sulfurpotassiummod_sulfur")
+FAMILIES["sp_sulfur"]["also_suffixes"] = ["sulfurpotassiummod_nether_sulfur"]
+
+# Rubinated Nether (assets CC BY-SA 4.0): nether ruby; molten ruby is animated and lies in magma, no variants.
+_ore_mod_family("rn_nether_ruby", "rubinated nether", "rubinated_nether", ["nether_ruby_ore"], "nether_ruby",
+                matrix="rubinated_nether_nether_ruby")
+_ore_mod_family("rn_molten_ruby", "rubinated nether", "rubinated_nether", ["molten_ruby_ore"], "molten_ruby")
+ANIMATED["rn_molten_ruby"] = _mcmeta_animation("rubinated nether", "molten_ruby")
+
+# Railcraft Reborn (its own licence: art may be used alongside it, with attribution and a link to its GitHub).
+for _o in ("lead", "nickel", "silver", "sulfur", "tin", "zinc"):
+    _ore_mod_family(f"rc_{_o}", "railcraft reborn", "railcraft", [f"{_o}_ore", f"deepslate_{_o}_ore"], _o, matrix=f"railcraft_{_o}")
+_ore_mod_family("rc_firestone", "railcraft reborn", "railcraft", ["firestone_ore"], "firestone")
+ANIMATED["rc_firestone"] = _mcmeta_animation("railcraft reborn", "firestone")
+_ore_mod_family("rc_saltpeter", "railcraft reborn", "railcraft", ["saltpeter_ore"], "saltpeter")
+
+# Project Red Exploration (MIT).
+for _o in ("electrotine", "peridot", "ruby", "sapphire", "silver", "tin"):
+    _ore_mod_family(f"pr_{_o}", "project red exploration", "projectred_exploration", [f"{_o}_ore", f"deepslate_{_o}_ore"], _o,
+                    matrix=f"projectred_exploration_{_o}")
+
+# MythicBotany (Apache-2.0): Alfheim's three, animated, in its own stone: no Seamless Ores variants.
+for _o in ("dragonstone", "elementium", "gold"):
+    _ore_mod_family(f"mb_{_o}", "mythicbotany", "mythicbotany", [f"{_o}_ore"], _o)
+    ANIMATED[f"mb_{_o}"] = _mcmeta_animation("mythicbotany", _o)
+
+# Just Enough Guns (GPL-3.0): brimstone, one drawing over its three stones; scrap, drawn apart in deepslate.
+_ore_mod_family("jeg_brimstone", "just enough guns", "jeg", ["brimstone_ore", "basalt_brimstone_ore", "blackstone_brimstone_ore"],
+                "brimstone", matrix="jeg_brimstone")
+_split_family("jeg", "just enough guns", "jeg", "scrap", "jeg_scrap")
+
+# Create: Gunsmithing (GPL-3.0): lead, sulfur.
+_split_family("cgs", "create gunsmithing", "cgs", "lead", "cgs_lead")
+_ore_mod_family("cgs_sulfur", "create gunsmithing", "cgs", ["sulfur_ore"], "sulfur", matrix="cgs_sulfur")
+
+# Bronze (GPL-3.0): tin. Its block ids end in _ore_block.
+_split_family("brz", "bronze", "bronze", "tin", "bronze_tin", "tin_ore_block", "deepslate_tin_ore_block")
+
+# Mining Master (Apache-2.0): its gems. Ice sapphire's border is drawn as sapphire_border.
+for _o in ("dive_aquamarine", "fire_ruby", "haste_peridot", "ice_sapphire", "lucky_citrine", "spirit_garnet", "unbreaking_iolite"):
+    _border = "sapphire" if _o == "ice_sapphire" else _o
+    _group = f"miningmaster_{_o}"
+    _ore_mod_family(f"mm_{_o}", "mining master", "miningmaster", [f"{_o}_ore"], _o, border=_border,
+                    matrix=_group, group=_group, hosts="shallow")
+    _ore_mod_family(f"mm_deepslate_{_o}", "mining master", "miningmaster", [f"deepslate_{_o}_ore"], f"deepslate_{_o}", border=_border,
+                    matrix=_group, group=_group, hosts="deep")
+for _o in ("divine_beryl", "spider_kunzite"):
+    _ore_mod_family(f"mm_{_o}", "mining master", "miningmaster", [f"{_o}_ore", f"deepslate_{_o}_ore"], _o, matrix=f"miningmaster_{_o}")
+for _o in ("heart_rhodonite", "kinetic_opal", "power_pyrite"):
+    _ore_mod_family(f"mm_{_o}", "mining master", "miningmaster", [f"{_o}_ore"], _o, matrix=f"miningmaster_{_o}")
+_ore_mod_family("mm_air_malachite", "mining master", "miningmaster", ["air_malachite_ore"], "air_malachite")
+
+# Oritech (CC BY 4.0): nickel, platinum drawn per stone with a border each (the owner's), its uranium a patch feature.
+_ore_mod_family("ot_nickel", "oritech", "oritech", ["nickel_ore", "deepslate_nickel_ore"], "nickel", matrix="oritech_nickel")
+_ore_mod_family("ot_deepslate_platinum", "oritech", "oritech", ["deepslate_platinum_ore"], "deepslate_platinum",
+                matrix="oritech_platinum", group="oritech_platinum")
+_ore_mod_family("ot_endstone_platinum", "oritech", "oritech", ["endstone_platinum_ore"], "endstone_platinum",
+                matrix="oritech_end_platinum", group="oritech_platinum")
+_ore_mod_family("ot_deepslate_uranium", "oritech", "oritech", ["deepslate_uranium_ore"], "deepslate_uranium")
+
+# Spelunkery (LGPL-3.0): the game's ores in the game's rock, drawn over the same pixels, so SGO only and the base art
+# (owner): each joins its base family. Lead lands on Oreganized's pixels, zinc on Create's, jade on Sully's. Its silver
+# is a drawing of its own.
+_SPELUNKERY_ROCK = ("andesite", "diorite", "granite", "tuff")
+for _o, _family in (("coal", "coal"), ("copper", "copper"), ("diamond", "diamond"), ("emerald", "emerald"), ("gold", "gold"),
+                    ("iron", "iron"), ("lapis", "lapis"), ("redstone", "redstone"), ("zinc", "zinc"), ("jade", "sul_jade"),
+                    ("lead", "oreganized_lead")):
+    FAMILIES[_family]["targets"] += [f"spelunkery:{_h}_{_o}_ore" for _h in _SPELUNKERY_ROCK]
+FAMILIES["redstone"]["targets"].append("spelunkery:calcite_redstone_ore")
+FAMILIES["lapis"]["targets"].append("spelunkery:sandstone_lapis_ore")
+FAMILIES["diamond"]["targets"].append("spelunkery:smooth_basalt_diamond_ore")
+_ore_mod_family("spel_silver", "spelunkery", "spelunkery", [f"{_h}_silver_ore" for _h in _SPELUNKERY_ROCK], "silver")
+
 # CREDITS. Every art folder a family draws from, and the mod whose ore art it is derived from: who made
 # it and the licence that art stays under. Read from each mod's repository LICENSE and README, else its
 # jar, the stricter one winning where they disagree (maintainer notes, 21 to 23 Oct 2026). Every zip
@@ -1006,6 +1107,21 @@ WHOLE_BLOCK_GLOW["component_deposit"] = dict(
 # (display, author, licence, links)
 CREDITS = {
     "actually additions": ("Actually Additions", "Ellpeck", "MIT", ()),
+    "bronze": ("Bronze", "Khazoda", "GPL-3.0", ()),
+    "create gunsmithing": ("Create: Gunsmithing", "Jetug, Dayton, melox", "GPL-2.0-or-later", ()),
+    "just enough guns": ("Just Enough Guns", "MigaMi", "GPL-3.0", ()),
+    "mining master": ("Mining Master", "Infernal Studios", "Apache-2.0", ()),
+    "mythicbotany": ("MythicBotany", "noeppi_noeppi, MelanX", "Apache-2.0", ()),
+    "oritech": ("Oritech", "Rearth", "CC BY 4.0", ()),
+    "project red exploration": ("Project Red Exploration", "MrTJP, Chicken Bones, covers1624", "MIT", ()),
+    "railcraft reborn": ("Railcraft Reborn", "Sm0keySa1m0n, Edivad99", "Railcraft Reborn License", ("https://github.com/railcraft-reborn/railcraft",)),
+    "rubinated nether": ("Rubinated Nether", "Artienia, Juniper, Darksonic300, Serine", "CC BY-SA 4.0", ()),
+    "spelunkery": ("Spelunkery", "Ordana, Keybounce, eldabys", "LGPL-3.0", ()),
+    "sulfur and potassium more gunpowder": ("Sulfur and Potassium", "Branders", "CC0-1.0", ()),
+    "the midnight lurker": ("The Midnight Lurker", "Voxla", "MIT", ()),
+    "tinkers construct": ("Tinkers' Construct", "Slime Knights", "MIT", ()),
+    "treasure2": ("Treasure2", "gottsch", "OSL-3.0", ()),
+    "werewolves become a beast": ("Werewolves: Become a Beast", "Cheaterpaul, Maxanier, RebelT", "LGPL-3.0", ()),
     "alexs caves": ("Alex's Caves", "Alexthe668, Noonyeyz", "LGPL-3.0", ()),
     "basic end ores": ("Basic End Ores", "cScotPlay", "MIT", ()),
     "basic nether ores": ("Basic Nether Ores", "cScotPlay", "MIT", ()),
