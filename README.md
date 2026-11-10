@@ -265,7 +265,7 @@ Siljuholtet Johansen** and a link to its official download page wherever the pac
 Railcraft Reborn's ore art is used under its own licence, with credit to Sm0keySa1m0n and Edivad99 and a
 link to [its repository](https://github.com/railcraft-reborn/railcraft).
 
-Shipped under the mod's own licence, file by file: Alex's Caves, Bigger Reactors (LGPL-2.1), Epic
+Shipped under the mod's own licence, file by file: Alex's Caves, Bigger Reactors and Elemental Craft (LGPL-2.1), Epic
 Paladins, Ice and Fire, Powah, Rats, Spelunkery, Sully's Mod and Werewolves (LGPL-3.0); Cobblemon
 (MPL-2.0); Bronze, Create: Gunsmithing, Iter RPG, Just Enough Guns, Scorched Guns and Superb Warfare
 (GPL); Deeper and Darker and Dense Ores (AGPL-3.0); Treasure2 (OSL-3.0); Rubinated Nether and Theurgy
