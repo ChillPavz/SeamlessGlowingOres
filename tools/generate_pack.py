@@ -1014,6 +1014,9 @@ def _split_family(prefix, art, ns, ore, matrix, block=None, deep_block=None, gro
 # Werewolves (LGPL-3.0): silver.
 _split_family("ww", "werewolves become a beast", "werewolves", "silver", "werewolves_silver")
 
+# Elemental Craft (LGPL-2.1): inert crystal, drawn apart in deepslate.
+_split_family("elc", "elemental craft", "elementalcraft", "inert_crystal", "elementalcraft_inert_crystal")
+
 # Treasure2 (OSL-3.0): one drawing per gem in stone and deepslate.
 for _o in ("onyx", "ruby", "sapphire", "topaz"):
     _ore_mod_family(f"t2_{_o}", "treasure2", "treasure2", [f"{_o}_ore", f"deepslate_{_o}_ore"], _o, matrix=f"treasure2_{_o}")
@@ -1126,6 +1129,7 @@ CREDITS = {
     "tinkers construct": ("Tinkers' Construct", "Slime Knights", "MIT", ()),
     "treasure2": ("Treasure2", "gottsch", "OSL-3.0", ()),
     "werewolves become a beast": ("Werewolves: Become a Beast", "Cheaterpaul, Maxanier, RebelT", "LGPL-3.0", ()),
+    "elemental craft": ("Elemental Craft", "Sirttas", "LGPL-2.1", ()),
     "alexs caves": ("Alex's Caves", "Alexthe668, Noonyeyz", "LGPL-3.0", ()),
     "basic end ores": ("Basic End Ores", "cScotPlay", "MIT", ()),
     "basic nether ores": ("Basic Nether Ores", "cScotPlay", "MIT", ()),
@@ -1749,6 +1753,28 @@ PIECED_TILES = [
 BORDER_LIFT = 0.05
 
 
+def quartered_cube():
+    """cube_all as eight 8x8x8 corners, so each face is four quarter quads (UVs follow the position).
+
+    For a translucent plate under a translucent lifted border (Subtle Animated, Pulsing). The pieced border
+    is four quarters per face; a whole-face plate quad sorts by its centre, so from many angles a far border
+    quarter sorts BEHIND it, is drawn first, and its clear pixels write depth over the plate: wedges of the
+    ore glow vanish (seen on NeoForge 1.21.1, 10 Nov 2026). Quarter against quarter, the lifted border always
+    sorts in front of the plate beneath it.
+    """
+    elements = []
+    for x in (0, 8):
+        for y in (0, 8):
+            for z in (0, 8):
+                faces = {}
+                for side, outer in (("west", x == 0), ("east", x == 8), ("down", y == 0), ("up", y == 8),
+                                    ("north", z == 0), ("south", z == 8)):
+                    if outer:
+                        faces[side] = {"texture": "#all", "cullface": side}
+                elements.append({"from": [x, y, z], "to": [x + 8, y + 8, z + 8], "faces": faces})
+    return elements
+
+
 def lifted_cube():
     """cube_all's single element, grown by BORDER_LIFT on every side, faces still culled as cube_all."""
     faces = {side: {"texture": "#all", "cullface": side, "uv": [0, 0, 16, 16]}
@@ -2262,6 +2288,9 @@ def build(variant, spec, out_dir=None, package=True):
                 "parent": "block/cube_all",
                 "textures": {"all": f"{PACK_NAMESPACE}:block/{texture}"},
             }
+            if split and border_glint and generated_render_type(render_type) == "translucent":
+                glow_model["elements"] = quartered_cube()
+                glow_model["textures"]["particle"] = glow_model["textures"]["all"]
             write_json(os.path.join(out_dir, "assets", PACK_NAMESPACE, "models", "block",
                                     f"{texture}.json"), glow_model)
             appended.append(f"{PACK_NAMESPACE}:block/{texture}")
@@ -2436,6 +2465,17 @@ def _read(path):
         return fh.read()
 
 
+def _clear_png():
+    import io as _io
+    from PIL import Image
+    buffer = _io.BytesIO()
+    Image.new("RGBA", (16, 16), (0, 0, 0, 0)).save(buffer, "PNG")
+    return buffer.getvalue()
+
+
+CLEAR_PNG = None
+
+
 def _place(out_dir, path, data):
     main, over = data
     target = os.path.join(out_dir, path)
@@ -2451,6 +2491,8 @@ def _place(out_dir, path, data):
 
 def build_combined(spec):
     import tempfile
+    global CLEAR_PNG
+    CLEAR_PNG = _clear_png()
     all_looks = looks()
     conds = {look: cond for look, _k, _v, cond in all_looks}
     stage = tempfile.mkdtemp(prefix="sgo-stage-")
@@ -2502,7 +2544,13 @@ def build_combined(spec):
                 groups.setdefault(content[look], []).append(look)
             group_list = list(groups.items())          # the default look's group first (dict order)
 
-            if group_list[0][0] is not None:
+            if group_list[0][0] is None and rel.endswith(".png"):
+                # A texture only other looks use still needs a file AT its path: Respackopts 4.6.2
+                # (Minecraft 1.20.1) serves a fallback for a missing file when it is opened, but not when
+                # the block atlas LISTS textures/, so the sprite was missing (seen on Fabric 1.20.1, 10 Nov
+                # 2026). A clear 16x16 costs nothing without Respackopts; with it the fallback replaces it.
+                _place(out_dir, rel, (CLEAR_PNG, None))
+            elif group_list[0][0] is not None:
                 _place(out_dir, rel, group_list[0][0])
             if len(group_list) == 1:
                 shared += 1
