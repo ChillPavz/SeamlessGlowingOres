@@ -2,9 +2,9 @@
 """
 Builds the Seamless Glowing Ores resource pack(s) in FUSION format.
 
-    py -3.14 tools/generate_pack.py                    # build the six published files
+    py -3.14 tools/generate_pack.py                    # build the ONE published pack (every look)
     py -3.14 tools/generate_pack.py --pack pulsing     # the unpublished Pulsing pair, on request
-    py -3.14 tools/generate_pack.py --pack animated    # only the animated pair
+    py -3.14 tools/generate_pack.py --pack animated    # one look pair as separate zips
     py -3.14 tools/generate_pack.py --families diamond # only the named families (a pilot)
     py -3.14 tools/generate_pack.py --list             # print coverage and exit
 
@@ -94,6 +94,10 @@ PACKS = {
     # second look, at a texture memory cost). Built only on request: --pack pulsing.
     "pulsing": dict(name="Seamless Pulsing Ores", namespace="seamlesspulsingores",
                     zip="SeamlessPulsingOres", glint=True, effect="pulse", publish=False),
+    # SUBTLE ANIMATED: the glint at Subtle strength (requested, 10 Nov 2026). Only ever built as a look
+    # inside the one combined pack (build_combined), never as files of its own.
+    "subtle_animated": dict(name="Seamless Subtle Animated Ores", namespace="seamlesssubtleanimatedores",
+                            zip="SeamlessSubtleAnimatedOres", glint=True, effect="subtle", publish=False),
 }
 PACK = "glowing"
 GLINT = False
@@ -2141,12 +2145,14 @@ def build_salt_glow(out_dir, tex_dir, current_tex_dir):
           f"(1.20.1 art in the root, 1.21.1 art in {CURRENT_ART_DIR}/)")
 
 
-def build(variant, spec):
+def build(variant, spec, out_dir=None, package=True):
     from PIL import Image
 
     # Each pack stages in its own folder: build/glow and build/border for the still pair, as always,
-    # and build/animated-glow and build/animated-border for the animated pair.
-    out_dir = os.path.join(root(), "build", variant if PACK == "glowing" else f"{PACK}-{variant}")
+    # and build/animated-glow and build/animated-border for the animated pair. build_combined() passes a
+    # staging folder of its own and zips nothing here.
+    if out_dir is None:
+        out_dir = os.path.join(root(), "build", variant if PACK == "glowing" else f"{PACK}-{variant}")
     if os.path.exists(out_dir):
         shutil.rmtree(out_dir)
     os.makedirs(out_dir, exist_ok=True)
@@ -2360,6 +2366,9 @@ def build(variant, spec):
                          f"would not have it. The overlay may only replace files, never add them.")
 
     print(f"  THIRD_PARTY_ART.txt: {write_art_notice(out_dir)} mods")
+    if not package:
+        print(f"  {built} families staged")
+        return
 
     zip_path = os.path.join(root(), "build", f"{PACKS[PACK]['zip']}-{variant.capitalize()}.zip")
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as archive:
@@ -2371,10 +2380,192 @@ def build(variant, spec):
           f"({os.path.getsize(zip_path) // 1024} KB)")
 
 
+# ---------------------------------------------------------------------------------------------------
+# ONE PACK, EVERY LOOK (owner, 10 Nov 2026). Replaces the published zips: SeamlessGlowingOres.zip holds
+# Glow and Border, regular and Subtle, still and animated, and Respackopts (an OPTIONAL dependency)
+# picks the look in game. Without Respackopts the pack shows DEFAULT_LOOK, exactly as the old Border zip.
+#
+# How: every look is built by build() into a staging folder, all in ONE namespace, then merged. A file
+# the same in every look is written once. A file that differs keeps the default look's content at its
+# own path with a `.rpo` beside it (condition: the looks that use it) whose `fallback` lists the other
+# contents, kept under assets/<ns>/sgo_variants/<look>/..., each with a `.rpo` of its own. That is
+# Respackopts' documented "select one of multiple files" (filerpo/MultipleFileSelection): the first
+# visible fallback wins. sgo_variants is outside textures/, so without Respackopts those files are never
+# read and never reach the block atlas.
+#
+# Manifest version 12: Respackopts 4.6.2 (Minecraft 1.20.1) refuses anything newer; the 1.21.x and 26.x
+# builds read 12 as well.
+RPO_PACK_ID = "sgo"
+RPO_FORMAT = 12
+DEFAULT_LOOK = "border_regular_still"
+COMBINED_ZIP = "SeamlessGlowingOres"
+VARIANTS_DIR = "sgo_variants"
+# A look without some family's modifier (a border-only family in a Glow look) gets this instead, so the
+# family's choice stays a plain list with no gap: it targets a block that never exists, and Fusion skips a
+# modifier whose targets all fail to resolve without a word (ignore_missing_targets).
+INERT_MODIFIER = {"targets": [f"{PACK_NAMESPACE}:never"], "append": [f"{PACK_NAMESPACE}:block/never"],
+                  "show_breaking_overlay": False, "ignore_missing_targets": True}
+
+
+def looks():
+    """(look id, pack key, variant, Respackopts condition) for every look in the combined pack."""
+    out = []
+    for border in (True, False):
+        for strength in ("regular", "subtle"):
+            for animated in (False, True):
+                key = {("regular", False): "glowing", ("subtle", False): "subtle",
+                       ("regular", True): "animated", ("subtle", True): "subtle_animated"}[(strength, animated)]
+                look = f"{'border' if border else 'glow'}_{strength}_{'animated' if animated else 'still'}"
+                cond = (f"{'' if border else '!'}border & strength.{strength} & "
+                        f"{'' if animated else '!'}animated")
+                out.append((look, key, "border" if border else "glow", cond))
+    return out
+
+
+def _tree(base):
+    found = {}
+    for folder, _dirs, files in os.walk(base):
+        for name in files:
+            full = os.path.join(folder, name)
+            found[os.path.relpath(full, base).replace(os.sep, "/")] = full
+    return found
+
+
+def _read(path):
+    with open(path, "rb") as fh:
+        return fh.read()
+
+
+def _place(out_dir, path, data):
+    main, over = data
+    target = os.path.join(out_dir, path)
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    with open(target, "wb") as fh:
+        fh.write(main)
+    if over is not None:
+        target = os.path.join(out_dir, CURRENT_ART_DIR, path)
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        with open(target, "wb") as fh:
+            fh.write(over)
+
+
+def build_combined(spec):
+    import tempfile
+    all_looks = looks()
+    conds = {look: cond for look, _k, _v, cond in all_looks}
+    stage = tempfile.mkdtemp(prefix="sgo-stage-")
+    try:
+        for look, key, variant, _cond in all_looks:
+            use_pack(key)
+            globals()["PACK_NAMESPACE"] = PACKS["glowing"]["namespace"]   # one namespace for every look
+            print(f"== look {look} ({PACK_NAME}, {variant})")
+            build(variant, spec, out_dir=os.path.join(stage, look), package=False)
+        use_pack("glowing")
+        ns = PACK_NAMESPACE
+
+        out_dir = os.path.join(root(), "build", COMBINED_ZIP)
+        if os.path.exists(out_dir):
+            shutil.rmtree(out_dir)
+        os.makedirs(out_dir)
+        trees = {look: _tree(os.path.join(stage, look)) for look in conds}
+        order = [DEFAULT_LOOK] + [look for look in conds if look != DEFAULT_LOOK]
+
+        def condition(members):
+            return " | ".join(f"({conds[m]})" for m in members)
+
+        # Every asset path, keyed WITHOUT the era folder: a look's content is (root bytes, overlay bytes),
+        # so the 1.20.1 art and the current art of one path always travel together.
+        prefix = CURRENT_ART_DIR + "/"
+        paths = sorted({rel[len(prefix):] if rel.startswith(prefix) else rel
+                        for tree in trees.values() for rel in tree if rel.startswith(("assets/", prefix))})
+        chosen = shared = 0
+        for rel in paths:
+            content = {}
+            for look in order:
+                tree = trees[look]
+                over_rel = prefix + rel
+                if rel in tree:
+                    data = (_read(tree[rel]), _read(tree[over_rel]) if over_rel in tree else None)
+                elif "/fusion/model_modifiers/" in rel:
+                    data = (json.dumps(INERT_MODIFIER, indent=2).encode(), None)
+                elif look == DEFAULT_LOOK:
+                    # Not in the default look: NO base file at all (so nothing reaches the atlas without
+                    # Respackopts). The `.rpo` alone stands at the path; its condition (the looks without
+                    # the file) leaves it absent, and the other looks get theirs through the fallbacks.
+                    data = None
+                else:
+                    # Another look lacks a file the default has: it may keep the default's copy, unused.
+                    data = content[DEFAULT_LOOK]
+                content[look] = data
+            groups = {}
+            for look in order:
+                groups.setdefault(content[look], []).append(look)
+            group_list = list(groups.items())          # the default look's group first (dict order)
+
+            if group_list[0][0] is not None:
+                _place(out_dir, rel, group_list[0][0])
+            if len(group_list) == 1:
+                shared += 1
+                continue
+            chosen += 1
+            inside = rel[len("assets/"):]
+            fallbacks = []
+            for data, members in group_list[1:]:
+                alt = f"assets/{ns}/{VARIANTS_DIR}/{members[0]}/{inside}"
+                _place(out_dir, alt, data)
+                write_json(os.path.join(out_dir, alt + ".rpo"), {"condition": condition(members)})
+                fallbacks.append(alt)
+            write_json(os.path.join(out_dir, rel + ".rpo"),
+                       {"condition": condition(group_list[0][1]), "fallback": fallbacks})
+
+        mcmeta = json.loads(_read(trees[DEFAULT_LOOK]["pack.mcmeta"]))
+        mcmeta["pack"]["description"] = ("Seamless Glowing Ores - glowing, connected ores. Requires Fusion; "
+                                         "Respackopts (optional) picks the look.")
+        write_json(os.path.join(out_dir, "pack.mcmeta"), mcmeta)
+        build_pack_icon(out_dir)
+        with open(os.path.join(out_dir, "respackopts.json5"), "w", encoding="utf-8") as fh:
+            fh.write("{\n"
+                     f'  id: "{RPO_PACK_ID}",\n'
+                     f"  version: {RPO_FORMAT},\n"
+                     '  capabilities: ["FileFilter"],\n'
+                     "  conf: {\n"
+                     "    border: true,\n"
+                     '    strength: ["regular", "subtle"],\n'
+                     "    animated: false\n"
+                     "  }\n"
+                     "}\n")
+        write_json(os.path.join(out_dir, "assets", ns, "lang", "en_us.json"), {
+            f"rpo.{RPO_PACK_ID}": "Seamless Glowing Ores",
+            f"rpo.{RPO_PACK_ID}.border": "Connected border",
+            f"rpo.{RPO_PACK_ID}.strength": "Glow strength",
+            f"rpo.{RPO_PACK_ID}.strength.regular": "Regular",
+            f"rpo.{RPO_PACK_ID}.strength.subtle": "Subtle",
+            f"rpo.{RPO_PACK_ID}.animated": "Animated glint",
+        })
+
+        assert_owns_only_its_namespace(out_dir)
+        assert_no_excluded_mods(out_dir)
+        for rel in _tree(os.path.join(out_dir, CURRENT_ART_DIR)):
+            if not os.path.exists(os.path.join(out_dir, rel)):
+                sys.exit(f"{CURRENT_ART_DIR}/{rel} has no counterpart in the pack root")
+        print(f"  THIRD_PARTY_ART.txt: {write_art_notice(out_dir)} mods")
+
+        zip_path = os.path.join(root(), "build", f"{COMBINED_ZIP}.zip")
+        if os.path.exists(zip_path):
+            os.remove(zip_path)
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as archive:
+            for rel, full in sorted(_tree(out_dir).items()):
+                archive.write(full, rel)
+        print(f"\n  {len(conds)} looks, {shared} shared files, {chosen} chosen by Respackopts -> "
+              f"{os.path.relpath(zip_path, root())} ({os.path.getsize(zip_path) // 1024} KB)")
+    finally:
+        shutil.rmtree(stage, ignore_errors=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--list", action="store_true", help="print coverage and exit")
-    parser.add_argument("--pack", choices=sorted(PACKS), help="build only this pair (default: both)")
+    parser.add_argument("--pack", choices=sorted(PACKS), help="build only this pair as separate zips (default: the one combined pack)")
     parser.add_argument("--families", help="comma-separated family keys to build, and nothing else")
     args = parser.parse_args()
     check_matrix_keys()
@@ -2418,13 +2609,16 @@ def main():
     warn_if_overlays_drifted()
     verify_salt_against_meadow()
     spec = layout()
-    for pack in ([args.pack] if args.pack else [k for k, v in PACKS.items() if v.get("publish", True)]):
-        use_pack(pack)
-        print(f"== {PACK_NAME}")
-        build("glow", spec)
-        print()
-        build("border", spec)
-        print()
+    if not args.pack:
+        build_combined(spec)
+        return
+    # --pack <key>: one pair as separate zips, the old way (Pulsing lives here until it is published).
+    use_pack(args.pack)
+    print(f"== {PACK_NAME}")
+    build("glow", spec)
+    print()
+    build("border", spec)
+    print()
 
 
 if __name__ == "__main__":

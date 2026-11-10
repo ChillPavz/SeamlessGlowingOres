@@ -9,15 +9,16 @@ in `tools/` is not.
 | | |
 |---|---|
 | Minecraft | One file. **Publish it tagged 1.21 and up**; it loads far older but see the note below |
-| Requires | [Fusion](https://modrinth.com/mod/fusion-connected-textures) **1.3.0 or newer**, and nothing else |
+| Requires | [Fusion](https://modrinth.com/mod/fusion-connected-textures) **1.3.0 or newer** |
+| Optional | [Respackopts](https://modrinth.com/mod/respackopts) (with LibJF), Fabric and NeoForge: picks the look in game |
 | Wiki | https://chillpavz.com/seamless-glowing-ores |
 | Licence | All rights reserved, see `LICENSE` |
 
 ## Building
 
 ```
-py -3.14 tools/generate_pack.py                     # builds the six published zips into build/
-py -3.14 tools/generate_pack.py --pack animated     # only the animated pair
+py -3.14 tools/generate_pack.py                     # builds the one published pack into build/
+py -3.14 tools/generate_pack.py --pack pulsing      # one look pair as separate zips (Pulsing: unpublished)
 py -3.14 tools/generate_pack.py --families diamond  # only the named families, for a pilot
 py -3.14 tools/generate_pack.py --list              # prints coverage and exits
 ```
@@ -26,12 +27,15 @@ Pillow is required and lives on the 3.14 install. Output:
 
 | File | Contents |
 |---|---|
-| `build/SeamlessGlowingOres-Glow.zip` | Emissive only |
-| `build/SeamlessGlowingOres-Border.zip` | Emissive plus the 47 tile connected outline |
-| `build/SeamlessAnimatedOres-Glow.zip` | Emissive, with the glint |
-| `build/SeamlessAnimatedOres-Border.zip` | Emissive plus a connected outline, both with the glint |
-| `build/SeamlessSubtleOres-Glow.zip` | Emissive at half strength |
-| `build/SeamlessSubtleOres-Border.zip` | Emissive plus the connected outline, both at half strength |
+| `build/SeamlessGlowingOres.zip` | Every look in one pack, and its staging folder `build/SeamlessGlowingOres/` |
+
+The looks: Glow or Border, Regular or Subtle (half strength), still or with the glint. Without Respackopts the
+pack shows Border, Regular, still, file for file the same as the old Border zip. With it, the player picks.
+Each look is built into a staging folder in one namespace and merged: a file that differs between looks
+keeps the default look's copy at its own path, with a `.rpo` whose fallbacks serve the other looks' copies
+from `assets/seamlessglowingores/sgo_variants/<look>/` (Respackopts' multiple file selection). Those sit
+outside `textures/`, so without Respackopts they are never read. `respackopts.json5` declares format 12,
+the newest the Minecraft 1.20.1 build of Respackopts reads.
 
 `build/` holds whatever was built last, and a `--families` pilot leaves a partial zip there. Build
 in full before handing a zip to anyone.
