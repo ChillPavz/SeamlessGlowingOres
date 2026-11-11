@@ -837,8 +837,8 @@ _ore_mod_family("ed_salt", "expanded delight", "expandeddelight", ["salt_ore", "
 
 # Hazen 'N Stuff (PolyForm Shield 1.0.0; "Required Notice: Copyright Hazen"): chlorophyte, dreadstone, and
 # zenalite drawn per stone (five drawings, one border). Ids from 1.4.0.14 (1.21.1 NeoForge); the 1.20.1
-# "watered-down" edition names and draws its zenalite differently and is not covered. Solar core has no
-# overlay yet.
+# "watered-down" edition names and draws its zenalite differently and is not covered. Solar core is drawn per
+# stone (netherrack, blackstone; one border, 11 Nov 2026); Seamless Ores' variants wear the netherrack drawing.
 _ore_mod_family("hz_chlorophyte", "hazen n stuff", "hazennstuff", ["chlorophyte_ore"], "chlorophyte",
                 matrix="chlorophyte")
 _ore_mod_family("hz_dreadstone", "hazen n stuff", "hazennstuff", ["dreadstone_ore"], "dreadstone", matrix="dreadstone")
@@ -846,6 +846,10 @@ for _h in ("stone", "deepslate", "end_stone", "abysslate", "voidstone"):
     _ore_mod_family(f"hz_zenalite_{_h}", "hazen n stuff", "hazennstuff", [f"zenalite_{_h}_ore"], f"zenalite_{_h}",
                     border="zenalite", group="hazennstuff_zenalite")
 FAMILIES["hz_zenalite_end_stone"]["matrix"] = "zenalite"
+for _h in ("netherrack", "blackstone"):
+    _ore_mod_family(f"hz_solar_core_{_h}", "hazen n stuff", "hazennstuff", [f"solar_core_{_h}_ore"],
+                    f"solar_core_{_h}", border="solar_core", group="hazennstuff_solar_core")
+FAMILIES["hz_solar_core_netherrack"]["matrix"] = "solar_core"
 
 # Majrusz's Progressive Difficulty (MIT): enderium shard ore, End only, so no Seamless Ores variants.
 _ore_mod_family("mj_enderium_shard", "majruszs progressive difficulty", "majruszsdifficulty", ["enderium_shard_ore"],
