@@ -1757,43 +1757,6 @@ PIECED_TILES = [
 BORDER_LIFT = 0.05
 
 
-# UVs of a face of the box [x1,y1,z1]..[x2,y2,z2], as the game derives them when a face names none.
-def _auto_uv(side, a, b):
-    (x1, y1, z1), (x2, y2, z2) = a, b
-    return {"down": [x1, 16 - z2, x2, 16 - z1], "up": [x1, z1, x2, z2],
-            "north": [16 - x2, 16 - y2, 16 - x1, 16 - y1], "south": [x1, 16 - y2, x2, 16 - y1],
-            "west": [z1, 16 - y2, z2, 16 - y1], "east": [16 - z2, 16 - y2, 16 - z1, 16 - y1]}[side]
-
-
-def quartered_cube():
-    """cube_all as eight 8x8x8 corners, so each face is four quarter quads, LIFTED by BORDER_LIFT.
-
-    For a translucent plate under a translucent lifted border (Subtle Animated, Pulsing). The pieced border
-    is four quarters per face; a whole-face plate quad sorts by its centre, so from many angles a far border
-    quarter sorts BEHIND it, is drawn first, and its clear pixels write depth over the plate: wedges of the
-    ore glow vanish (seen on NeoForge 1.21.1, 10 Nov 2026). Quarter against quarter, the lifted border always
-    sorts in front of the plate beneath it.
-    The quarters are new vertices in the face's plane, so UNLIFTED they fight the block's own face exactly as
-    the pieced border did (owner's launcher test, 11 Nov 2026: Subtle Animated Border flickered on every
-    loader once the plate was quartered). So the plate sits BORDER_LIFT off the face and its border
-    2 x BORDER_LIFT (see lifted_cube). UVs are explicit and come from the unlifted box.
-    """
-    elements = []
-    for x in (0, 8):
-        for y in (0, 8):
-            for z in (0, 8):
-                a, b = (x, y, z), (x + 8, y + 8, z + 8)
-                faces = {}
-                for side, outer in (("west", x == 0), ("east", x == 8), ("down", y == 0), ("up", y == 8),
-                                    ("north", z == 0), ("south", z == 8)):
-                    if outer:
-                        faces[side] = {"texture": "#all", "cullface": side, "uv": _auto_uv(side, a, b)}
-                lo = [c - BORDER_LIFT if c == 0 else c for c in a]
-                hi = [c + BORDER_LIFT if c == 16 else c for c in b]
-                elements.append({"from": lo, "to": hi, "faces": faces})
-    return elements
-
-
 def lifted_cube(lift=BORDER_LIFT):
     """cube_all's single element, grown by `lift` on every side, faces still culled as cube_all."""
     faces = {side: {"texture": "#all", "cullface": side, "uv": [0, 0, 16, 16]}
@@ -2262,6 +2225,15 @@ def build(variant, spec, out_dir=None, package=True):
         # An animated family splits into two appended layers; everything else keeps the single
         # composited sheet that is already proven in game.
         split = bordered and (animation is not None or border_only)
+        # FOLD: where the border glints with the ore, the ore glint goes INTO every tile of the border's
+        # pieced sheet and there is one layer, not two. Two translucent layers (a plate and a lifted border)
+        # sort quad by quad, and Fusion draws a face's border as ONE quad wherever its four corners take the
+        # same piece but as four quarters elsewhere, so no split of the plate pairs up with it on every face:
+        # whole plates lost wedges (NeoForge 1.21.1, 10 Nov 2026), quartered plates fought the block face and
+        # then lost quarters while moving (owner's launcher tests, 11 Nov 2026, several versions). One layer
+        # has nothing to sort against. The ore is the same on every tile, so the pieced quarters still
+        # assemble it whole; the empty "all connected" tile becomes the ore alone.
+        fold = split and border_glint and glint is not None
         appended = []
 
         # Where each texture goes, and from which drawing. A LEGACY_ART family writes its old art to
@@ -2280,7 +2252,7 @@ def build(variant, spec, out_dir=None, package=True):
         # Plain (non-connecting) for the Glow variant and for any animated Border family, because
         # only a plain sprite can animate. A non-animated Border family folds this layer into the
         # sheet below instead, exactly as before.
-        if (not bordered or split) and not border_only:
+        if (not bordered or split) and not border_only and not fold:
             texture = f"{family}_overlay"
             for era_dir, legacy in eras:
                 if glint is not None:
@@ -2307,9 +2279,6 @@ def build(variant, spec, out_dir=None, package=True):
                 "parent": "block/cube_all",
                 "textures": {"all": f"{PACK_NAMESPACE}:block/{texture}"},
             }
-            if split and border_glint and generated_render_type(render_type) == "translucent":
-                glow_model["elements"] = quartered_cube()
-                glow_model["textures"]["particle"] = glow_model["textures"]["all"]
             write_json(os.path.join(out_dir, "assets", PACK_NAMESPACE, "models", "block",
                                     f"{texture}.json"), glow_model)
             appended.append(f"{PACK_NAMESPACE}:block/{texture}")
@@ -2322,8 +2291,19 @@ def build(variant, spec, out_dir=None, package=True):
                     # The border glints too: one whole border-only pieced sheet per glint frame,
                     # stacked, so every tile carries the same frames and timing as the ore beneath it.
                     master = Image.open(art_path(family, "borders", legacy)).convert("RGBA")
-                    stack([build_pieced(frame) for frame in glint_frames(master)]).save(
-                        os.path.join(era_dir, f"{texture}.png"))
+                    sheets = [build_pieced(frame) for frame in glint_frames(master)]
+                    if fold:
+                        ore = Image.open(art_path(family, "overlays", legacy)).convert("RGBA")
+                        if ore.size != master.size:
+                            sys.exit(f"{family}: overlay {ore.size} and border {master.size} differ in size")
+                        size = master.width
+                        for sheet, ore_frame in zip(sheets, glint_frames(ore), strict=True):
+                            for i in range(sheet.width // size):
+                                box = (i * size, 0, (i + 1) * size, size)
+                                tile = ore_frame.copy()
+                                tile.alpha_composite(sheet.crop(box))
+                                sheet.paste(tile, box)
+                    stack(sheets).save(os.path.join(era_dir, f"{texture}.png"))
                 else:
                     build_sheet(family, spec, ore_layer=not split, legacy=legacy).save(
                         os.path.join(era_dir, f"{texture}.png"))
@@ -2362,9 +2342,7 @@ def build(variant, spec, out_dir=None, package=True):
                 "textures": {"all": f"{PACK_NAMESPACE}:block/{texture}"},
             }
             if border_glint:
-                # Over a quartered plate (itself lifted by BORDER_LIFT) the border goes one step further out.
-                quartered = split and generated_render_type(render_type) == "translucent"
-                border_model["elements"] = lifted_cube(2 * BORDER_LIFT if quartered else BORDER_LIFT)
+                border_model["elements"] = lifted_cube()
                 border_model["textures"]["particle"] = border_model["textures"]["all"]
             write_json(os.path.join(out_dir, "assets", PACK_NAMESPACE, "models", "block",
                                     f"{texture}.json"), border_model)
