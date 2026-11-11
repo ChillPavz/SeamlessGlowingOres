@@ -1753,33 +1753,48 @@ PIECED_TILES = [
 BORDER_LIFT = 0.05
 
 
+# UVs of a face of the box [x1,y1,z1]..[x2,y2,z2], as the game derives them when a face names none.
+def _auto_uv(side, a, b):
+    (x1, y1, z1), (x2, y2, z2) = a, b
+    return {"down": [x1, 16 - z2, x2, 16 - z1], "up": [x1, z1, x2, z2],
+            "north": [16 - x2, 16 - y2, 16 - x1, 16 - y1], "south": [x1, 16 - y2, x2, 16 - y1],
+            "west": [z1, 16 - y2, z2, 16 - y1], "east": [16 - z2, 16 - y2, 16 - z1, 16 - y1]}[side]
+
+
 def quartered_cube():
-    """cube_all as eight 8x8x8 corners, so each face is four quarter quads (UVs follow the position).
+    """cube_all as eight 8x8x8 corners, so each face is four quarter quads, LIFTED by BORDER_LIFT.
 
     For a translucent plate under a translucent lifted border (Subtle Animated, Pulsing). The pieced border
     is four quarters per face; a whole-face plate quad sorts by its centre, so from many angles a far border
     quarter sorts BEHIND it, is drawn first, and its clear pixels write depth over the plate: wedges of the
     ore glow vanish (seen on NeoForge 1.21.1, 10 Nov 2026). Quarter against quarter, the lifted border always
     sorts in front of the plate beneath it.
+    The quarters are new vertices in the face's plane, so UNLIFTED they fight the block's own face exactly as
+    the pieced border did (owner's launcher test, 11 Nov 2026: Subtle Animated Border flickered on every
+    loader once the plate was quartered). So the plate sits BORDER_LIFT off the face and its border
+    2 x BORDER_LIFT (see lifted_cube). UVs are explicit and come from the unlifted box.
     """
     elements = []
     for x in (0, 8):
         for y in (0, 8):
             for z in (0, 8):
+                a, b = (x, y, z), (x + 8, y + 8, z + 8)
                 faces = {}
                 for side, outer in (("west", x == 0), ("east", x == 8), ("down", y == 0), ("up", y == 8),
                                     ("north", z == 0), ("south", z == 8)):
                     if outer:
-                        faces[side] = {"texture": "#all", "cullface": side}
-                elements.append({"from": [x, y, z], "to": [x + 8, y + 8, z + 8], "faces": faces})
+                        faces[side] = {"texture": "#all", "cullface": side, "uv": _auto_uv(side, a, b)}
+                lo = [c - BORDER_LIFT if c == 0 else c for c in a]
+                hi = [c + BORDER_LIFT if c == 16 else c for c in b]
+                elements.append({"from": lo, "to": hi, "faces": faces})
     return elements
 
 
-def lifted_cube():
-    """cube_all's single element, grown by BORDER_LIFT on every side, faces still culled as cube_all."""
+def lifted_cube(lift=BORDER_LIFT):
+    """cube_all's single element, grown by `lift` on every side, faces still culled as cube_all."""
     faces = {side: {"texture": "#all", "cullface": side, "uv": [0, 0, 16, 16]}
              for side in ("down", "up", "north", "south", "west", "east")}
-    return [{"from": [-BORDER_LIFT] * 3, "to": [16 + BORDER_LIFT] * 3, "faces": faces}]
+    return [{"from": [-lift] * 3, "to": [16 + lift] * 3, "faces": faces}]
 
 
 def build_pieced(master):
@@ -2343,7 +2358,9 @@ def build(variant, spec, out_dir=None, package=True):
                 "textures": {"all": f"{PACK_NAMESPACE}:block/{texture}"},
             }
             if border_glint:
-                border_model["elements"] = lifted_cube()
+                # Over a quartered plate (itself lifted by BORDER_LIFT) the border goes one step further out.
+                quartered = split and generated_render_type(render_type) == "translucent"
+                border_model["elements"] = lifted_cube(2 * BORDER_LIFT if quartered else BORDER_LIFT)
                 border_model["textures"]["particle"] = border_model["textures"]["all"]
             write_json(os.path.join(out_dir, "assets", PACK_NAMESPACE, "models", "block",
                                     f"{texture}.json"), border_model)
@@ -2544,12 +2561,23 @@ def build_combined(spec):
                 groups.setdefault(content[look], []).append(look)
             group_list = list(groups.items())          # the default look's group first (dict order)
 
-            if group_list[0][0] is None and rel.endswith(".png"):
-                # A texture only other looks use still needs a file AT its path: Respackopts 4.6.2
-                # (Minecraft 1.20.1) serves a fallback for a missing file when it is opened, but not when
-                # the block atlas LISTS textures/, so the sprite was missing (seen on Fabric 1.20.1, 10 Nov
-                # 2026). A clear 16x16 costs nothing without Respackopts; with it the fallback replaces it.
-                _place(out_dir, rel, (CLEAR_PNG, None))
+            if group_list[0][0] is None:
+                # A file only other looks use still needs a file AT its path: on Minecraft 1.20.1 the game
+                # LISTS textures/ (atlas, and the .mcmeta beside each png) and models/ rather than opening
+                # each file, and with Respackopts 4.6.2 a path with no base file came up missing (owner's
+                # launcher tests, 10 and 11 Nov 2026: Animated Border looks showed the missing texture with
+                # only the pngs given a base). Every base-less file gets a placeholder; with Respackopts the
+                # listed file is opened through its filter and the fallback replaces it. Without it the
+                # placeholders are inert: a clear 16x16, an empty .mcmeta (so no Fusion type meets the
+                # 16x16), and the model of the first look that has one (unreferenced, its textures exist).
+                if rel.endswith(".png"):
+                    _place(out_dir, rel, (CLEAR_PNG, None))
+                elif rel.endswith(".mcmeta"):
+                    _place(out_dir, rel, (b"{}" + bytes([10]), None))
+                elif "/models/" in rel:
+                    _place(out_dir, rel, group_list[1][0])
+                else:
+                    sys.exit(f"{rel}: no base copy rule for a file the default look lacks")
             elif group_list[0][0] is not None:
                 _place(out_dir, rel, group_list[0][0])
             if len(group_list) == 1:
