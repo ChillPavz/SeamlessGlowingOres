@@ -1119,7 +1119,7 @@ _ore_mod_family("spel_silver", "spelunkery", "spelunkery", [f"{_h}_silver_ore" f
 CREDITS = {
     "actually additions": ("Actually Additions", "Ellpeck", "MIT", ()),
     "bronze": ("Bronze", "Khazoda", "GPL-3.0", ()),
-    "create gunsmithing": ("Create: Gunsmithing", "Jetug, Dayton, melox", "GPL-2.0-or-later", ()),
+    "create gunsmithing": ("Create: Gunsmithing", "Jetug, Dayton, melox", "GPL-3.0", ()),
     "just enough guns": ("Just Enough Guns", "MigaMi", "GPL-3.0", ()),
     "mining master": ("Mining Master", "Infernal Studios", "Apache-2.0", ()),
     "mythicbotany": ("MythicBotany", "noeppi_noeppi, MelanX", "Apache-2.0", ()),
