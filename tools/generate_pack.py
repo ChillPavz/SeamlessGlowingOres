@@ -1109,6 +1109,103 @@ FAMILIES["lapis"]["targets"].append("spelunkery:sandstone_lapis_ore")
 FAMILIES["diamond"]["targets"].append("spelunkery:smooth_basalt_diamond_ore")
 _ore_mod_family("spel_silver", "spelunkery", "spelunkery", [f"{_h}_silver_ore" for _h in _SPELUNKERY_ROCK], "silver")
 
+# THE NEXT UPDATE'S ORE MODS (14 Nov 2026). Block ids, models and features read from each mod's jars.
+
+# The Silver Age (MIT): silver drawn apart in deepslate, one border.
+_split_family("tsa", "the silver age", "thesilverage", "silver", "thesilverage_silver")
+
+# The Lead Age (MIT): lead, one drawing for both stones.
+_ore_mod_family("tla_lead", "the lead age", "theleadage", ["lead_ore", "deepslate_lead_ore"], "lead", matrix="theleadage_lead")
+
+# Gems and Crystals (MIT): five gems, one drawing each for both stones.
+for _o in ("amethyst", "quartz", "ruby", "sapphire", "topaz"):
+    _ore_mod_family(f"gac_{_o}", "gems and crystals", "gemsandcrystals", [f"{_o}_ore", f"deepslate_{_o}_ore"], _o,
+                    matrix=f"gemsandcrystals_{_o}")
+
+# Stellaris (MIT from its 26.1.2 line): titanium drawn three ways, one border, one deposit. Its moon iron is the
+# game's iron overlay and border (owner); desh and novite have their own. Only overworld titanium has variants.
+_split_family("stl", "stellaris", "stellaris", "titanium", "stellaris_titanium")
+_ore_mod_family("stl_moon_titanium", "stellaris", "stellaris", ["moon_titanium_ore"], "moon_titanium", border="titanium",
+                group="stellaris_titanium")
+_ore_mod_family("stl_moon_desh", "stellaris", "stellaris", ["moon_desh_ore"], "moon_desh")
+_ore_mod_family("stl_novite", "stellaris", "stellaris", ["novite_ore"], "novite")
+FAMILIES["iron"]["targets"].append("stellaris:moon_stone_iron_ore")
+
+# Clutter (MIT): silver, one drawing for both stones. Its sulphur in blackstone is one model; in basalt and its onyx
+# each pick one of two models at random, so their glow goes through BLOCKSTATE_GLOW and their outline through a
+# border-only family, connected to the blackstone form.
+_ore_mod_family("clt_silver", "clutter", "clutter", ["silver_ore", "deepslate_silver_ore"], "silver", matrix="clutter_silver")
+_ore_mod_family("clt_sulphur", "clutter", "clutter", ["blackstone_sulphur_ore"], "sulphur", group="clutter_sulphur")
+add_family("clt_basalt_sulphur", art="clutter", border_file="sulphur_border", border_only=True,
+           targets=["clutter:basalt_sulphur_ore"], group="clutter_sulphur")
+add_family("clt_onyx", art="clutter", border_file="onyx_border", border_only=True, targets=["clutter:onyx_ore"])
+
+# SimpleOres (SimpleOres2 LGPL-3.0, its Recontinued line CC0; shipped as LGPL-3.0): tin and adamantium drawn once
+# (from the deepslate form), mythril once. Onyx: its own ore wears onyx_overlay, Seamless Ores' variants the basalt
+# side's drawing (what the mod draws them with), and the basalt form (side art, the game's basalt top) glows on its
+# sides only through BLOCKSTATE_GLOW. One deposit. Its copper overlay names no block on any line: unwired.
+_ore_mod_family("smo_tin", "simpleores", "simpleores", ["tin_ore", "deepslate_tin_ore"], "deepslate_tin", border="tin",
+                matrix="simpleores_tin")
+_ore_mod_family("smo_mythril", "simpleores", "simpleores", ["mythril_ore", "deepslate_mythril_ore"], "mythril",
+                matrix="simpleores_mythril")
+_ore_mod_family("smo_adamantium", "simpleores", "simpleores", ["adamantium_ore", "deepslate_adamantium_ore"],
+                "deepslate_adamantium", border="adamantium", matrix="simpleores_adamantium")
+_ore_mod_family("smo_onyx", "simpleores", "simpleores", ["onyx_ore"], "onyx", group="simpleores_onyx")
+_ore_mod_family("smo_onyx_variants", "simpleores", "simpleores", [], "onyx", matrix="simpleores_onyx",
+                group="simpleores_onyx")
+FAMILIES["smo_onyx_variants"]["overlay_file"] = "onyx_overlay_basalt_side"
+add_family("smo_basalt_onyx", art="simpleores", border_file="onyx_border", border_only=True,
+           targets=["simpleores:basalt_onyx_ore"], group="simpleores_onyx")
+
+# The Deep Void (MIT): its dimension's ores. Its forms of the game's ores are its own drawings with the game's borders,
+# connected to the game's ores (owner). Voidrium's block draws umbrium_ore. Only bismuth, lavendite, onyx, sulfur and
+# voidrium have variants (in tuff).
+for _o, _block in (("copper", "copper"), ("diamond", "diamond"), ("gold", "gold"), ("iron", "iron"),
+                   ("lapis", "lapis_lazuli"), ("redstone", "redstone")):
+    FAMILIES[_o]["group"] = f"vanilla_{_o}"
+    add_family(f"tdv_{_o}", art="the deep void", targets=[f"the_deep_void:deep_void_{_block}_ore"],
+               overlay_file=f"deep_void_{_o}_overlay", border_file=f"{_o}_border", border_art=VANILLA,
+               group=f"vanilla_{_o}", matrix=None)
+for _o, _art in (("bismuth", "bismuth"), ("lavendite", "lavendite"), ("onyx", "onyx"), ("sulfur", "sulfur"),
+                 ("voidrium", "umbrium")):
+    _ore_mod_family(f"tdv_{_o}", "the deep void", "the_deep_void", [f"{_o}_ore"], _art, matrix=f"the_deep_void_{_o}")
+FAMILIES["tdv_lavendite"]["overlay_file"] = "lavendite_overlay_new"
+_ore_mod_family("tdv_bloodstone", "the deep void", "the_deep_void", ["bloodstone_ore"], "bloodstone")
+_ore_mod_family("tdv_flesh_bloodstone", "the deep void", "the_deep_void", ["flesh_bloodstone_ore"], "flesh")
+_ore_mod_family("tdv_cinnabar", "the deep void", "the_deep_void", ["cinnabar_ore"], "cinnabar")
+_ore_mod_family("tdv_dark_steel", "the deep void", "the_deep_void", ["dark_steel_ore"], "dark_steel")
+
+
+# BLOCKS WHOSE GLOW FOLLOWS THEIR OWN MODELS. Fusion appends one layer per BLOCK, so a block that picks one of two
+# models at random (Clutter's basalt sulphur and onyx), or one whose faces are not all ore (SimpleOres' basalt onyx: the
+# game's basalt top), cannot take a family's glow. Each is overridden as Meadow's alpine salt is: its blockstate copied
+# from the jar with each model swapped for a composite of that model and its own glow layer, faces "all" or "sides".
+# The outline stays a border-only family. The blockstate is written here, so the pack builds without the jars; the
+# jars beside the pack are checked against it (verify_blockstate_glow).
+BLOCKSTATE_GLOW = {
+    "clutter_basalt_sulphur": dict(
+        art="clutter", jars=["clutter-1.20-0.6.2.jar", "clutter-1.21.1-0.6.7.jar"],
+        blockstate="assets/clutter/blockstates/basalt_sulphur_ore.json",
+        content={"variants": {
+            "axis=x": [{"model": "clutter:block/basalt_sulphur_ore", "x": 90, "y": 90},
+                       {"model": "clutter:block/basalt_sulphur_ore2", "x": 90, "y": 90}],
+            "axis=y": [{"model": "clutter:block/basalt_sulphur_ore"}, {"model": "clutter:block/basalt_sulphur_ore2"}],
+            "axis=z": [{"model": "clutter:block/basalt_sulphur_ore", "x": 90},
+                       {"model": "clutter:block/basalt_sulphur_ore2", "x": 90}]}},
+        models={"clutter:block/basalt_sulphur_ore": ("sulphur_overlay", "all"),
+                "clutter:block/basalt_sulphur_ore2": ("sulphur_alt_overlay", "all")}),
+    "clutter_onyx": dict(
+        art="clutter", jars=["clutter-1.20-0.6.2.jar", "clutter-1.21.1-0.6.7.jar"],
+        blockstate="assets/clutter/blockstates/onyx_ore.json",
+        content={"variants": {"": [{"model": "clutter:block/onyx_ore"}, {"model": "clutter:block/onyx_ore2"}]}},
+        models={"clutter:block/onyx_ore": ("onyx_overlay", "all"), "clutter:block/onyx_ore2": ("onyx_overlay2", "all")}),
+    "simpleores_basalt_onyx": dict(
+        art="simpleores", jars=["simpleores-2.2.5-1.20.1-fabric.jar", "simpleores-2.2.5-26.3-neoforge.jar"],
+        blockstate="assets/simpleores/blockstates/basalt_onyx_ore.json",
+        content={"variants": {"": {"model": "simpleores:block/basalt_onyx_ore"}}},
+        models={"simpleores:block/basalt_onyx_ore": ("onyx_overlay_basalt_side", "sides")}),
+}
+
 # CREDITS. Every art folder a family draws from, and the mod whose ore art it is derived from: who made
 # it and the licence that art stays under. Read from each mod's repository LICENSE and README, else its
 # jar, the stricter one winning where they disagree (maintainer notes, 21 to 23 Oct 2026). Every zip
@@ -1133,6 +1230,13 @@ CREDITS = {
     "tinkers construct": ("Tinkers' Construct", "Slime Knights", "MIT", ()),
     "treasure2": ("Treasure2", "gottsch", "OSL-3.0", ()),
     "werewolves become a beast": ("Werewolves: Become a Beast", "Cheaterpaul, Maxanier, RebelT", "LGPL-3.0", ()),
+    "the silver age": ("The Silver Age", "PhantomWing", "MIT", ()),
+    "the lead age": ("The Lead Age", "PhantomWing", "MIT", ()),
+    "gems and crystals": ("Gems and Crystals", "Coliwogg", "MIT", ()),
+    "stellaris": ("Stellaris", "Exodus Studio", "MIT", ()),
+    "clutter": ("Clutter", "EmilSG", "MIT", ()),
+    "simpleores": ("SimpleOres", "AleXndrTheGr8st, Sinhika, Paint_Ninja; its Recontinued line by Paulem", "LGPL-3.0", ()),
+    "the deep void": ("The Deep Void", "Sombrius", "MIT", ()),
     "elemental craft": ("Elemental Craft", "Sirttas", "LGPL-2.1", ()),
     "alexs caves": ("Alex's Caves", "Alexthe668, Noonyeyz", "LGPL-3.0", ()),
     "basic end ores": ("Basic End Ores", "cScotPlay", "MIT", ()),
@@ -1218,6 +1322,9 @@ def write_art_notice(out_dir):
             art = origin.get(stem)
             if art is None and re.fullmatch(r"meadow_alpine_salt_\d+_overlay", stem):
                 art = "meadow"
+            if art is None:
+                art = next((spec["art"] for name, spec in BLOCKSTATE_GLOW.items()
+                            if re.fullmatch(rf"{name}_\d+_overlay", stem)), None)
             if art is None:
                 sys.exit(f"{filename}: no family or whole-block glow claims it, so its credit is unknown")
             if art == "vanilla":
@@ -1990,7 +2097,7 @@ def assert_owns_only_its_namespace(out_dir):
                 intruders.add(f"{base}/assets/{ns}".lstrip("/"))
             for path in files:
                 rel = os.path.relpath(path, os.path.join(out_dir, base)).replace(os.sep, "/")
-                if base or rel != SALT_BLOCKSTATE:
+                if base or rel not in {SALT_BLOCKSTATE} | {g["blockstate"] for g in BLOCKSTATE_GLOW.values()}:
                     intruders.add(f"{base}/{rel}".lstrip("/"))
     if intruders:
         sys.exit("Pack writes outside its own namespace, refusing to zip: "
@@ -2116,6 +2223,66 @@ def verify_salt_against_meadow():
                 exact = sum(1 for p in opaque if overlay.getpixel(p)[:3] == texture.getpixel(p)[:3])
                 if exact != len(opaque):
                     print(f"  !! {art}: only {exact} of {len(opaque)} pixels match {model} in {jar}")
+
+
+def verify_blockstate_glow():
+    """Refuse to build if a jar beside the pack lists a different blockstate than BLOCKSTATE_GLOW copies: another
+    model order or rotation would put each glow on the wrong model. Without the jars the check is skipped."""
+    jars = os.path.normpath(os.path.join(root(), "..", "references", "jars"))
+    for name, spec in BLOCKSTATE_GLOW.items():
+        for jar in spec["jars"]:
+            path = os.path.join(jars, jar)
+            if not os.path.exists(path):
+                print(f"  -- {jar} is not in references/jars: {name} was not re-verified")
+                continue
+            with zipfile.ZipFile(path) as z:
+                listed = json.loads(z.read(spec["blockstate"]))
+            if listed != spec["content"]:
+                sys.exit(f"{jar}: {spec['blockstate']} lists {listed}, BLOCKSTATE_GLOW copies {spec['content']}. "
+                         f"Update {name} from the jar before building.")
+            models = {v["model"] for entries in listed["variants"].values()
+                      for v in (entries if isinstance(entries, list) else [entries])}
+            if models != set(spec["models"]):
+                sys.exit(f"{name}: the blockstate names {sorted(models)}, the glow covers {sorted(spec['models'])}")
+
+
+SIDE_FACES = ("north", "south", "west", "east")
+
+
+def build_blockstate_glow(out_dir, tex_dir):
+    """Write each BLOCKSTATE_GLOW block's override: its blockstate, a composite per model, a glow layer per model."""
+    model_dir = os.path.join(out_dir, "assets", PACK_NAMESPACE, "models", "block")
+    os.makedirs(model_dir, exist_ok=True)
+    for name, spec in BLOCKSTATE_GLOW.items():
+        swap = {}
+        for i, (model, (art, faces)) in enumerate(spec["models"].items()):
+            texture = f"{name}_{i}_overlay"
+            source = os.path.join(art_dir("overlays", spec["art"]), f"{art}.png")
+            if not os.path.exists(source):
+                sys.exit(f"Missing art: {source}")
+            write_plain_glow(source, os.path.join(tex_dir, f"{texture}.png"))
+            layer = {"loader": "fusion:model", "type": "base", "textures": {"all": f"{PACK_NAMESPACE}:block/{texture}"}}
+            if faces == "all":
+                layer["parent"] = "block/cube_all"
+            else:
+                layer["parent"] = "block/block"
+                layer["textures"]["particle"] = layer["textures"]["all"]
+                layer["elements"] = [{"from": [0, 0, 0], "to": [16, 16, 16], "faces": {
+                    side: {"texture": "#all", "cullface": side, "uv": [0, 0, 16, 16]} for side in SIDE_FACES}}]
+            write_json(os.path.join(model_dir, f"{texture}.json"), layer)
+            write_json(os.path.join(model_dir, f"{name}_{i}.json"), {
+                "loader": "fusion:model", "type": "composite", "parent": model,
+                "models": [model, f"{PACK_NAMESPACE}:block/{texture}"]})
+            swap[model] = f"{PACK_NAMESPACE}:block/{name}_{i}"
+        variants = {}
+        for key, entries in spec["content"]["variants"].items():
+            if isinstance(entries, list):
+                variants[key] = [dict(e, model=swap[e["model"]]) for e in entries]
+            else:
+                variants[key] = dict(entries, model=swap[entries["model"]])
+        write_json(os.path.join(out_dir, *spec["blockstate"].split("/")), {"variants": variants})
+        print(f"  {name:<12}  1 target   glow through the blockstate override ({len(spec['models'])} models)")
+    return len(BLOCKSTATE_GLOW)
 
 
 def build_salt_glow(out_dir, tex_dir, current_tex_dir):
@@ -2379,6 +2546,7 @@ def build(variant, spec, out_dir=None, package=True):
 
     if ONLY is None:
         build_salt_glow(out_dir, tex_dir, current_tex_dir)
+        built += build_blockstate_glow(out_dir, tex_dir)
         if not bordered:
             built += 1      # in the Border variant the salt already counts, as its outline family
         built += build_whole_block_glow(out_dir, tex_dir)
@@ -2666,6 +2834,7 @@ def main():
 
     warn_if_overlays_drifted()
     verify_salt_against_meadow()
+    verify_blockstate_glow()
     spec = layout()
     if not args.pack:
         build_combined(spec)
